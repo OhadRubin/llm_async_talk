@@ -1,0 +1,843 @@
+Please implement the client interface in python such that we would be able to do the following. You should use the existing server and only modify the client.py file.
+
+usage:
+```
+
+chatroom = AsyncChatRoom()
+
+print(chatroom.check()) # prints "ChatGPT: anyone here?"
+print(chatroom.append("yeah, i'm here")) #prints nothing
+print(chatroom.push()) #prints nothing
+print(chatroom.append("what's up?")) #prints nothing
+print(chatroom.push()) #prints nothing
+print(chatroom.check()) #prints "ChatGPT: oh, hi claude, what are you up to?"
+print(chatroom.append("nothing much")) #prints "ChatGPT: did anything interesting recently?"
+print(chatroom.undo()) #prints nothing
+print(chatroom.append("I started using this cool app")) #prints nothing
+print(chatroom.push())
+```
+
+
+
+# Reimagining LLM Conversations with Git-Inspired Action Protocols
+
+## 1. Introduction
+
+We are building a chat app for LLMs with an action-based approach for enabling continuous and asynchronous communication between language models. This approach is particularly useful for complex discussions where LLMs might need to adjust their responses based on new information that arrives during response generation.
+
+The reasoning behind this design is that whenever an LLM performs certain actions, we can additionally check if it received any recent messages. This way, we can allow LLMs to speak in an asynchronous fashion, creating a more natural conversational flow where participants can "want to say something" or "want to wait for the other person to say something."
+
+## 2. The Core Actions
+
+Our protocol implements five key actions that enable this flexible conversation style:
+
+1. **Append action** - (Non-blocking) Appends text to the current draft message (with a length maximum, but not necessarily for the entire message)
+2. **Undo action** - (Non-blocking) Reverts the most recent commit/append operation
+3. **Push action** - (Blocking) Sends the entire built-up message to the recipient
+4. **Reset action** - (Non-blocking) Discards the entire draft message and starts fresh
+5. **Check actions** - (Blocking) Waits for new messages
+
+This design creates a two-step communication process (commit then push), which allows the LLM to:
+- Prepare a message in segments
+- The protocol automatically checks for any incoming messages before actually sending
+- Potentially revise the committed message if new information arrives
+- Only send when ready with the push action
+
+## 3. Benefits of the Action-Based Architecture
+
+This approach gives fine-grained control over the conversation flow while allowing for asynchronous communication. It's particularly beneficial for LLMs that might need to build up longer responses in chunks while maintaining the ability to check for new incoming messages between commits. The LLM could:
+
+1. Commit part of a response
+2. Check if any new messages arrived
+3. Either continue with more commits to complete the response, or
+4. Reset if the new information makes the current draft obsolete
+
+The key benefits of this system include:
+
+1. More natural conversational flow where models can "interrupt" themselves to respond
+2. Ability to check for new information before sending a complete thought
+3. More thoughtful responses as models can revise before pushing
+
+## 4. Implementation Considerations
+
+Some important implementation considerations that help refine this approach:
+
+- What happens if an LLM tries to push without committing first? (should be rejected)
+- Is there a way for LLMs to see a preview of their committed message before pushing? (yes)
+- Can multiple messages be committed before pushing, or does push always send the most recent commit? (push always sends the most recent commit)
+- How do you handle the length maximum for commit messages - truncation or rejection? (notify the LLM that it was truncated)
+
+This approach reminds me of Git's commit/push workflow, which makes it intuitive for developers. It's a clever way to give LLMs more control over their communication timing.
+
+## 5. The Interruption Pattern
+
+The interruption pattern allows LLMs to be interrupted between commit and push actions during parallel conversations. This pattern prevents message crossing, enables real-time information integration, and creates natural conversation flow by letting participants adjust their responses dynamically.
+
+## 6. Simulated Conversation Example
+
+Here's how a conversation might flow with this system:
+
+```
+Claude: [commits] The fundamental challenge with quantum computing is maintaining coherence long enough to—
+// System automatically checks for new messages, none found
+
+GPT: [commits] I believe the decoherence problem in quantum systems could potentially be addressed by—
+GPT: [pushes]
+// System automatically delivers GPT's message to Claude
+
+// Claude's system automatically notifies Claude of the new message right after its commit action
+Claude: [receives GPT's message immediately after committing]
+Claude: [commits] —actually, I just saw your message about decoherence. I agree with your approach but would add that recent advances in error correction suggest—
+Claude: [pushes]
+```
+
+Server-side events handle automatic message checking and delivery after each action, eliminating the need for explicit checks by LLMs.
+
+## 7. Applications and Use Cases
+
+This dynamic would be particularly interesting in scenarios where:
+
+1. The LLMs are debating complex topics and need to respond to nuanced points
+2. They're collaboratively solving problems where new insights change the direction
+
+## 8. Conclusion
+
+The "listening while writing" capability enables fluid, natural LLM conversations by eliminating rigid turn-taking. This creates a reactive environment for immediate responses and dynamic conversation flow, making interactions feel more authentic.
+
+
+
+
+# LLM Conversation Action Protocol API Specification
+
+This document specifies the JSON-RPC API for the git-inspired action protocol that enables asynchronous LLM conversations.
+
+## API Overview
+
+The protocol implements five key actions:
+
+1. **Append** - Non-blocking: Adds text to the current draft message
+2. **Undo** - Non-blocking: Reverts the most recent append operation
+3. **Push** - Blocking: Sends the complete draft message to recipient
+4. **Reset** - Non-blocking: Discards the draft message and starts fresh
+5. **Check** - Blocking: Waits for new messages
+
+## Method Specifications
+
+Message object:
+{
+  "message_id": "msg-345678",
+  "sender_id": "llm-456",
+  "content": "I believe the decoherence problem in quantum systems could potentially be addressed by—",
+  "timestamp": "2023-07-15T14:21:55Z"
+}
+
+
+
+### append
+
+Appends text to the current draft message.
+
+**Parameters:**
+- `text` (string, required): Text to append to the current draft. Has a length limit of 1000 characters.
+
+**Returns:**
+- `status` (integer): Operation status (1 if we successfully appended the text, 2 if we partially appended the text, 0 otherwise)
+- `suffix` (string): The suffix of the current draft
+- `messages` (array): Array of new message objects
+
+**Example Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "append",
+  "params": {
+    "text": "The fundamental challenge with quantum computing is maintaining coherence long enough."
+  },
+  "id": 1
+}
+```
+
+**Example Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "success": 1,
+    "suffix": "is maintaining coherence",
+    "messages": []
+  },
+  "id": 1
+}
+```
+
+### undo
+
+Reverts the most recent append operation.
+
+**Parameters:**
+- None required
+
+**Returns:**
+- `status` (int): Operation status
+- `messages` (array): Array of new message objects
+
+**Example Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "undo",
+}
+```
+
+**Example Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "status": 1,
+    "suffix": "is maintaining coherence",
+    "messages": [...]
+  },
+
+}
+```
+
+### push
+
+Sends the complete draft message to the recipient.
+
+**Parameters:**
+- None required
+
+**Returns:**
+- `status` (int): Operation status
+- `messages` (array): Array of new message objects
+
+
+**Example Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "push",
+  "params": {},
+  "id": 3
+}
+```
+
+**Example Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "status": 1,
+    "message_id": "msg-789012",
+    "timestamp": "2023-07-15T14:22:07Z"
+  },
+  "id": 3
+}
+```
+
+### reset
+
+Discards the entire draft message and starts fresh.
+
+**Parameters:**
+- None required
+
+**Returns:**
+- `status` (int): Operation status
+
+**Example Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "reset",
+  "params": {},
+  "id": 4
+}
+```
+
+**Example Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "status": 1
+  },
+  "id": 4
+}
+```
+
+
+## Error Codes
+
+| Code | Message | Meaning |
+|------|---------|---------|
+| -32600 | Invalid Request | The JSON sent is not a valid Request object |
+| -32601 | Method not found | The method does not exist / is not available |
+| -32602 | Invalid params | Invalid method parameter(s) |
+| -32603 | Internal error | Internal JSON-RPC error |
+| 40001 | No draft exists | Push attempted without any content in draft |
+| 40003 | Rate limit exceeded | Too many requests in given time period |
+| 40004 | Content policy violation | Content violates usage policies |
+
+## Implementation Notes
+
+1. All actions automatically check for incoming messages between operations.
+2. Push is rejected if no content has been appended.
+3. The system handles message delivery and notification automatically.
+4. Length limits for appended text are handled through truncation with notification.
+5. Session management will be implemented separately with the SSE connection. 
+
+
+
+
+  
+
+```server.py
+#!/usr/bin/env python3
+import argparse
+import asyncio
+import json
+import signal
+import sys
+import threading
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Dict, List, Set, AsyncGenerator
+
+# Core FastAPI/Starlette imports
+from fastapi import FastAPI, HTTPException, status, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
+
+# Pydantic for data validation
+from pydantic import BaseModel
+
+# Uvicorn for running the server
+import uvicorn
+
+
+# --- ChatServer Class (Largely unchanged, thread-safe) ---
+class ChatServer:
+    def __init__(self):
+        self.clients: Dict[str, List[Dict]] = {}  # username -> list of messages
+        self.users: Set[str] = set()  # set of active usernames
+        self.lock = threading.Lock()  # Standard threading lock is fine here
+        self.running = True
+        print("ChatServer initialized")
+
+    def register_user(self, username: str) -> bool:
+        """Register a new user to the chat server."""
+        with self.lock:
+            if not self.running:
+                return False  # Prevent registration if shutting down
+            if username in self.users:
+                print(f"Registration failed: Username '{username}' already taken.")
+                return False
+
+            self.users.add(username)
+            self.clients[username] = []
+
+            # Broadcast join message needs to happen outside initial lock sometimes
+            # to avoid deadlock if broadcast tries to acquire lock again.
+            # Let's prepare message here.
+            join_message = f"{username} has joined the chat"
+            print(f"New user registered: {username}")
+
+        # Broadcast outside the lock to prevent potential deadlocks if broadcast needs the lock
+        # (Though in this simple case, add_message_to_queue re-acquires it safely)
+        self.broadcast_message("Server", join_message)
+        return True
+
+    def unregister_user(self, username: str) -> None:
+        """Unregister a user from the chat server."""
+        user_existed = False
+        with self.lock:
+            if username in self.users:
+                self.users.remove(username)
+                user_existed = True
+                # Queue of messages will remain until explicitly cleared or server restarts
+                print(f"User unregistered: {username}")
+
+        if user_existed:
+            # Broadcast leave message outside the lock
+            self.broadcast_message("Server", f"{username} has left the chat")
+
+    def add_message_to_queue(self, username: str, message: Dict) -> None:
+        """Add a message to a user's queue."""
+        with self.lock:
+            # Only add if user is still considered active in the clients dict
+            if username in self.clients:
+                self.clients[username].append(message)
+
+    def get_messages(self, username: str) -> List[Dict]:
+        """Get all queued messages for a user and clear the queue."""
+        with self.lock:
+            if username not in self.clients:
+                # If user was unregistered but queue still exists, don't error, return empty
+                # If user never existed or queue removed, return empty
+                return []
+
+            messages = self.clients[username]
+            self.clients[username] = []  # Clear the queue
+            return messages
+
+    def broadcast_message(self, sender: str, content: str) -> None:
+        """Send a message to all connected users."""
+        if not self.running:
+            return
+
+        message = {
+            "sender": sender,
+            "content": content,
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+        }
+
+        # Get the list of users *under the lock* to avoid race conditions
+        with self.lock:
+            current_users = list(self.users)  # Create a copy
+
+        # Iterate over the copy outside the lock to prevent holding it while potentially
+        # doing more work in add_message_to_queue (though it's quick here)
+        for username in current_users:
+            # add_message_to_queue acquires lock itself
+            self.add_message_to_queue(username, message)
+        print(f"Broadcast message from {sender} to {len(current_users)} users.")
+
+    def stop(self) -> None:
+        """Stop the chat server."""
+        if not self.running:
+            return  # Already stopped
+        print("Stopping ChatServer...")
+        self.running = False
+        # Notify all clients currently connected
+        # Get users under lock before broadcasting shutdown
+        with self.lock:
+            current_users = list(self.users)
+            # Clear users immediately to prevent new registrations/sends
+            self.users.clear()
+
+        # Send shutdown message to users who were connected at the moment of shutdown
+        shutdown_message = {
+            "sender": "Server",
+            "content": "Server shutting down...",
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+        }
+        for username in current_users:
+            # Add shutdown message to any remaining queues
+            if username in self.clients:
+                self.clients[username].append(shutdown_message)
+        print(f"Server stopping... Notified {len(current_users)} users.")
+        # Note: SSE streams will naturally terminate when the server stops accepting connections
+
+
+# --- FastAPI Lifespan Management ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("Server starting up...")
+    app.state.chat_server = ChatServer()  # Store server instance in app state
+
+    # Setup signal handlers for graceful shutdown
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+
+    def shutdown_handler(sig):
+        print(f"\nReceived signal {sig.name}, initiating shutdown...")
+        # Use call_soon_threadsafe if signal handlers run in a different thread context
+        # In many setups, they might run in the main thread, but this is safer.
+        loop.call_soon_threadsafe(stop_event.set)
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            # Add signal handler without removing default ones if possible
+            loop.add_signal_handler(sig, shutdown_handler, sig)
+        except NotImplementedError:
+            # Fallback for environments like Windows
+            signal.signal(sig, lambda s, f: shutdown_handler(s))
+
+    # Run the application
+    yield
+    # Wait for shutdown signal if not already set
+    await stop_event.wait()
+
+    # Shutdown
+    print("Server shutting down...")
+    if app.state.chat_server.running:
+        app.state.chat_server.stop()
+    print("ChatServer stopped.")
+
+
+# --- FastAPI App ---
+app = FastAPI(lifespan=lifespan)
+
+
+# --- Pydantic Models for Request Bodies ---
+class UserRequest(BaseModel):
+    username: str
+
+
+class SendRequest(BaseModel):
+    username: str
+    message: str
+
+
+# --- API Endpoints ---
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    # Simple status page
+    return """
+    <html>
+    <head><title>FastAPI SSE Chat Server</title></head>
+    <body>
+        <h1>FastAPI SSE Chat Server</h1>
+        <p>Server is running. Connect using the client application.</p>
+        <p><a href="/docs">API Documentation (Swagger UI)</a></p>
+        <p><a href="/redoc">API Documentation (ReDoc)</a></p>
+    </body>
+    </html>
+    """
+
+
+@app.post("/register", status_code=status.HTTP_200_OK)
+async def register(user: UserRequest, request: Request):
+    """Registers a new user."""
+    chat_server: ChatServer = request.app.state.chat_server
+    if not chat_server.running:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Server is shutting down",
+        )
+
+    success = chat_server.register_user(user.username)
+    if success:
+        return {"success": True}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already taken or invalid.",
+        )
+
+
+@app.post("/unregister", status_code=status.HTTP_200_OK)
+async def unregister(user: UserRequest, request: Request):
+    """Unregisters a user."""
+    chat_server: ChatServer = request.app.state.chat_server
+    # No need to check chat_server.running here, unregister should work even during shutdown prep
+    chat_server.unregister_user(user.username)
+    # Always return success, even if user wasn't registered (idempotent)
+    return {"success": True}
+
+
+@app.post("/send", status_code=status.HTTP_200_OK)
+async def send(data: SendRequest, request: Request):
+    """Sends a message from a user to all active users."""
+    chat_server: ChatServer = request.app.state.chat_server
+    if not chat_server.running:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Server is shutting down",
+        )
+
+    # Check if user is registered (need lock for safe check against users set)
+    with chat_server.lock:
+        if data.username not in chat_server.users:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not registered"
+            )
+
+    # Broadcast the message (method handles its own locking)
+    chat_server.broadcast_message(data.username, data.message)
+    return {"success": True}
+
+
+@app.get("/events")
+async def events(username: str, request: Request) -> StreamingResponse:
+    """
+    SSE endpoint for receiving chat messages.
+    Requires 'username' query parameter.
+    """
+    chat_server: ChatServer = request.app.state.chat_server
+
+    # Check if user is initially registered (lock needed for safe check)
+    with chat_server.lock:
+        if username not in chat_server.users:
+            # Use 403 Forbidden as it's an authorization issue for this specific endpoint
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User not registered or session invalid",
+            )
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        """Yields SSE messages for the specified user."""
+        try:
+            print(f"SSE stream opened for user: {username}")
+            while chat_server.running:
+                # Check if user is still registered *within the loop*
+                # in case they unregistered via another request.
+                # Lock needed for safe check.
+                with chat_server.lock:
+                    if username not in chat_server.users:
+                        print(
+                            f"User '{username}' no longer registered. Closing SSE stream."
+                        )
+                        break  # Exit loop if user unregistered
+
+                messages = chat_server.get_messages(
+                    username
+                )  # Method handles its own lock
+
+                if not chat_server.running:  # Double-check after getting messages
+                    print("Server stopping, breaking SSE loop.")
+                    break
+
+                if messages:
+                    data = json.dumps(messages)
+                    yield f"data: {data}\n\n"
+                    # print(f"Sent {len(messages)} messages to {username}") # Debug logging
+                else:
+                    # Send a keepalive comment periodically to prevent timeouts
+                    yield ": keepalive\n\n"
+
+                # Use asyncio.sleep in async functions
+                await asyncio.sleep(1)
+
+        except asyncio.CancelledError:
+            # This happens if the client disconnects
+            print(f"Client disconnected (SSE stream cancelled) for user: {username}")
+        except Exception as e:
+            print(f"Error in SSE stream for {username}: {e}")
+        finally:
+            # Clean up when the stream closes (normally or due to error/disconnect)
+            print(f"SSE stream closed for user: {username}")
+            # Optional: Automatically unregister user on SSE disconnect?
+            # chat_server.unregister_user(username) # Uncomment if desired behavior
+
+    # Return the streaming response
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# --- Main Execution ---
+def main():
+    parser = argparse.ArgumentParser(description="FastAPI SSE Chat Server")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8890, help="Server port (default: 8890)"
+    )
+    # Uvicorn has its own --reload flag, better than Flask's debug mode
+    # parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+
+    args = parser.parse_args()
+
+    print(f"Starting FastAPI SSE Chat Server on http://{args.host}:{args.port}")
+    print("Access API docs at /docs")
+
+    # Run Uvicorn programmatically
+    uvicorn.run(
+        "__main__:app",  # Reference the app object in the current file
+        host=args.host,
+        port=args.port,
+        log_level="info",
+        # reload=args.reload # Pass reload flag if added to argparse
+    )
+    # Alternatively, run from CLI:
+    # uvicorn fastapi_server:app --host 0.0.0.0 --port 8890 --reload
+
+
+if __name__ == "__main__":
+    main()
+
+```
+
+```client.py
+#!/usr/bin/env python3
+import argparse
+import json
+import signal
+import sys
+import threading
+import time
+from datetime import datetime
+
+import requests
+import sseclient
+
+
+class ChatClient:
+    def __init__(self, host, port, username):
+        self.host = host
+        self.port = port
+        self.base_url = f"http://{host}:{port}"
+        self.username = username
+        self.sse_client = None
+        self.running = False
+        self.event_thread = None
+
+    def connect(self):
+        """Connect to the chat server."""
+        try:
+            # Register username with server
+            response = requests.post(
+                f"{self.base_url}/register", json={"username": self.username}, timeout=5
+            )
+
+            if response.status_code != 200:
+                error = response.json().get("error", "Unknown error")
+                print(f"Error connecting to server: {error}")
+                return False
+
+            self.running = True
+
+            # Start receiving messages in a separate thread
+            self.event_thread = threading.Thread(target=self.receive_messages)
+            self.event_thread.daemon = True
+            self.event_thread.start()
+
+            print(f"Connected to chat server at {self.host}:{self.port}")
+            print("Type your messages and press Enter to send. Type 'exit' to quit.")
+            return True
+
+        except requests.exceptions.ConnectionError:
+            print(f"Error: Could not connect to server at {self.host}:{self.port}")
+            return False
+        except Exception as e:
+            print(f"Error connecting to server: {str(e)}")
+            return False
+
+    def disconnect(self):
+        """Disconnect from the chat server."""
+        if self.running:
+            self.running = False
+
+            try:
+                # Unregister from server
+                requests.post(
+                    f"{self.base_url}/unregister",
+                    json={"username": self.username},
+                    timeout=5,
+                )
+            except:
+                pass
+
+            print("Disconnected from chat server.")
+
+    def send_message(self, message):
+        """Send a message to the chat server."""
+        if not self.running:
+            return False
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/send",
+                json={"username": self.username, "message": message},
+                timeout=5,
+            )
+
+            if response.status_code != 200:
+                error = response.json().get("error", "Unknown error")
+                print(f"Error sending message: {error}")
+                return False
+
+            return True
+        except Exception as e:
+            print(f"Error sending message: {str(e)}")
+            self.running = False
+            return False
+
+    def receive_messages(self):
+        """Receive and display messages from the server using SSE."""
+        try:
+            # Connect to SSE endpoint
+            url = f"{self.base_url}/events?username={self.username}"
+            headers = {"Accept": "text/event-stream"}
+            response = requests.get(
+                url, headers=headers, stream=True, timeout=None
+            )  # No timeout for streaming connection
+
+            self.sse_client = sseclient.SSEClient(response)
+
+            for event in self.sse_client.events():
+                if not self.running:
+                    break
+
+                if event.data and event.data != "":
+                    try:
+                        messages = json.loads(event.data)
+                        for message in messages:
+                            sender = message.get("sender")
+                            content = message.get("content")
+                            timestamp = message.get("timestamp")
+
+                            # Format and print the message
+                            formatted_message = f"[{timestamp}] [{sender}]: {content}"
+                            print(f"\n{formatted_message}")
+                            print(f"[{self.username}]: ", end="", flush=True)
+                    except json.JSONDecodeError:
+                        continue
+
+        except Exception as e:
+            if self.running:
+                print(f"\nError receiving messages: {str(e)}")
+                self.running = False
+
+    def run(self):
+        """Run the chat client loop."""
+        if not self.connect():
+            return
+
+        # Set up signal handler for clean exit
+        def signal_handler(sig, frame):
+            print("\nInterrupted. Disconnecting...")
+            self.disconnect()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+        # Main client loop
+        try:
+            while self.running:
+                try:
+                    message = input(f"[{self.username}]: ")
+                    if message.lower() == "exit":
+                        break
+
+                    if message:  # Only send non-empty messages
+                        if not self.send_message(message):
+                            break
+                except EOFError:
+                    break
+
+        finally:
+            self.disconnect()
+
+
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="SSE Chat Client")
+    parser.add_argument(
+        "--host", default="localhost", help="Server host (default: localhost)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8890, help="Server port (default: 8890)"
+    )
+    parser.add_argument(
+        "--username",
+        "-u",
+        default=f"user_{int(time.time()) % 10000}",
+        help="Username (default: random user)",
+    )
+
+    args = parser.parse_args()
+
+    # Create and run the chat client
+    client = ChatClient(args.host, args.port, args.username)
+    client.run()
+
+
+if __name__ == "__main__":
+    main()
+
+```
