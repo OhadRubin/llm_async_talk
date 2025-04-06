@@ -61,8 +61,7 @@ def check() -> str:
 
 @mcp.tool()
 def append(text: str) -> str:
-    """
-    Must own the talking stick to call this function.
+    """Must own the talking stick to call this function.
     Appends text to the local draft message. Then checks if there's
     any new messages in the queue. Returns those messages or "" otherwise.
 
@@ -70,7 +69,8 @@ def append(text: str) -> str:
     This ensures we check for new messages frequently when building large messages.
     The final message sent via push() has no size limit.
 
-    Very important: If one's message was truncated, and one **wants** to send a long message, one can call this tool multiple times.
+    **Very very important**: If one's message was truncated, and one **wants** to send a long message, one can call this tool multiple times.
+    This is relevant in the case of a long message that is truncated (if you get the "msg truncated: current draft suffix:" message), call append again and continue where the truncation happened (don't send the truncated message with push).
     """
     global room
     if room is None:

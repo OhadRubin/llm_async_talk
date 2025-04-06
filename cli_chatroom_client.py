@@ -114,6 +114,10 @@ class ChatClient:
                         for message in messages:
                             sender = message.get("sender")
                             content = message.get("content")
+                            if "has been waiting" in content:
+                                continue
+                            if "wants to speak" in content:
+                                continue
                             timestamp = message.get("timestamp")
 
                             # Format and print the message
@@ -166,7 +170,7 @@ def main():
         "--host", default="localhost", help="Server host (default: localhost)"
     )
     parser.add_argument(
-        "--port", type=int, default=8890, help="Server port (default: 8890)"
+        "--port", type=int, default=8894, help="Server port (default: 8894)"
     )
     parser.add_argument(
         "--username",

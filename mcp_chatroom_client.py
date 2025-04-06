@@ -23,9 +23,9 @@ class AsyncChatRoom:
     def __init__(
         self,
         host: str = "localhost",
-        port: int = 8890,
+        port: int = 8894,
         username: str = "Claude",
-        max_append_length: int = 140,
+        max_append_length: int = 200,
     ):
         self.host = host
         self.port = port
@@ -236,7 +236,7 @@ class AsyncChatRoom:
 
     def _get_current_draft(self) -> str:
         """Get the current draft message as a single string"""
-        return " ".join(self._draft_segments).strip()
+        return "".join(self._draft_segments).strip()
 
     def _poll_new_message(self, return_list: bool = False) -> Optional[str]:
         """
@@ -277,18 +277,10 @@ class AsyncChatRoom:
         # Ensure we're connected before checking messages
 
         self.maybe_connect()
-        print(f"DEBUG: check() called - sending check_event for {self.username}")
-        # Call the check event endpoint
-        resp = requests.post(
-            f"{self.base_url}/check_event",
-            json={"username": self.username},
-            timeout=5,
-        )
-        resp.raise_for_status()
-        print(f"DEBUG: check_event response: {resp.status_code}")
 
         # Add a limit to avoid infinite loop
-        time.sleep(10)
+        delay = 2
+        first_time = True
 
         while True:
             # Check for any new messages in the queue
@@ -299,10 +291,18 @@ class AsyncChatRoom:
 
             # Sleep between polls to avoid busy waiting
             # Slightly longer delay between checks
-            time.sleep(1)  # Increased from 0.1 to 0.15 seconds
+            # Call the check event endpoint
+            if not first_time:
+                resp = requests.post(
+                    f"{self.base_url}/check_event",
+                    json={"username": self.username, "delay": delay},
+                    timeout=5,
+                )
+            resp.raise_for_status()
 
-        print(f"DEBUG: check() timed out after {max_attempts} attempts")
-        return ""
+            time.sleep(delay)
+            delay = 2 * delay
+            first_time = False
 
     def talking_stick(self) -> Optional[str]:
         """

@@ -625,7 +625,7 @@ def main():
         "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)"
     )
     parser.add_argument(
-        "--port", type=int, default=8890, help="Server port (default: 8890)"
+        "--port", type=int, default=8894, help="Server port (default: 8894)"
     )
     # Uvicorn has its own --reload flag, better than Flask's debug mode
     # parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
@@ -644,7 +644,7 @@ def main():
         # reload=args.reload # Pass reload flag if added to argparse
     )
     # Alternatively, run from CLI:
-    # uvicorn fastapi_server:app --host 0.0.0.0 --port 8890 --reload
+    # uvicorn fastapi_server:app --host 0.0.0.0 --port 8894 --reload
 
 
 if __name__ == "__main__":
@@ -821,7 +821,7 @@ def main():
         "--host", default="localhost", help="Server host (default: localhost)"
     )
     parser.add_argument(
-        "--port", type=int, default=8890, help="Server port (default: 8890)"
+        "--port", type=int, default=8894, help="Server port (default: 8894)"
     )
     parser.add_argument(
         "--username",

@@ -8,7 +8,7 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Dict, List, Set, AsyncGenerator, Optional
+from typing import Dict, List, Set, AsyncGenerator, Optional, Any
 
 # Core FastAPI/Starlette imports
 from fastapi import FastAPI, HTTPException, status, Request, BackgroundTasks
@@ -17,29 +17,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 # Pydantic for data validation
 from pydantic import BaseModel
 
-# Uvicorn for running the server
-import uvicorn
 
-# Global variables for signal handling
-shutdown_event = threading.Event()
-
-# --- Signal Handlers ---
-def setup_signal_handlers():
-    """Set up signal handlers for graceful shutdown."""
-    def signal_handler(signum, frame):
-        print(f"\nReceived signal {signal.Signals(signum).name}, initiating shutdown...")
-        shutdown_event.set()
-        # Give a short grace period for cleanup
-        time.sleep(0.5)
-        # Force exit if still running
-        sys.exit(0)
-    
-    # Register signals
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-# Setup signal handlers immediately on module import
-setup_signal_handlers()
 
 # --- ChatServer Class (Largely unchanged, thread-safe) ---
 class ChatServer:
@@ -48,8 +26,8 @@ class ChatServer:
         self.users: Set[str] = set()  # set of active usernames
         self.lock = threading.Lock()  # Standard threading lock is fine here
         self.running = True
-        self.waiting_users: Dict[str, float] = {}  # username -> timestamp when started waiting
-        self.last_message_timestamp: Dict[str, float] = {}  # username -> timestamp of last received message
+        self.sse_tasks: Dict[str, asyncio.Task[Any]] = {} # Track active SSE tasks
+
         print("ChatServer initialized")
 
     def register_user(self, username: str) -> bool:
@@ -70,22 +48,25 @@ class ChatServer:
 
     def unregister_user(self, username: str) -> None:
         """Unregister a user from the chat server."""
-        user_existed = False
         with self.lock:
+            # Remove from active users set
             if username in self.users:
                 self.users.remove(username)
-                user_existed = True
-                # Queue of messages will remain until explicitly cleared or server restarts
                 print(f"User unregistered: {username}")
-                # Remove from waiting users if they were waiting
-                if username in self.waiting_users:
-                    del self.waiting_users[username]
-                if username in self.last_message_timestamp:
-                    del self.last_message_timestamp[username]
+                
+            # Cancel and remove any associated SSE task if user unregisters explicitly
+            task = self.sse_tasks.pop(username, None)
+            if task and not task.done():
+                task.cancel()
+                print(f"Cancelled SSE task for explicitly unregistered user: {username}")
 
-        if user_existed:
-            # Broadcast leave message outside the lock
-            self.broadcast_message("Server", f"{username} has left the chat")
+            # Clean up message queue (don't remove as they might reconnect)
+            if username in self.clients:
+                # Don't delete the queue completely, just clear it
+                # This allows users to reconnect without losing their identity
+                self.clients[username] = []
+                
+
 
     def add_message_to_queue(self, username: str, message: Dict) -> None:
         """Add a message to a user's queue."""
@@ -115,29 +96,16 @@ class ChatServer:
         """Send a message to all connected users."""
         if not self.running:
             return
-
         message = {
             "sender": sender,
             "content": content,
             "timestamp": datetime.now().strftime("%H:%M:%S"),
         }
-
-        current_time = time.time()
         
         # Get the list of users *under the lock* to avoid race conditions
         with self.lock:
             current_users = list(self.users)  # Create a copy
             
-            # If a user sent a message, update their last message timestamp
-            if sender != "Server" and sender in self.users:
-                self.last_message_timestamp[sender] = current_time
-                
-            # If someone other than the server or waiting users sends a message,
-            # consider that as a response to waiting users
-            if sender != "Server" and self.waiting_users:
-                # Clear waiting users since someone responded
-                self.waiting_users.clear()
-
         # Iterate over the copy outside the lock to prevent holding it while potentially
         # doing more work in add_message_to_queue (though it's quick here)
         for username in current_users:
@@ -145,32 +113,37 @@ class ChatServer:
             self.add_message_to_queue(username, message)
         print(f"Broadcast message from {sender} to {len(current_users)} users.")
 
-    def mark_user_waiting(self, username: str) -> None:
-        """Mark a user as waiting for a response."""
-        with self.lock:
-            if username in self.users:
-                self.waiting_users[username] = time.time()
-                print(f"User {username} is now waiting for a response")
 
-    def get_waiting_users(self) -> Dict[str, float]:
-        """Get a copy of the waiting users dictionary."""
-        with self.lock:
-            return self.waiting_users.copy()
-
-    def stop(self) -> None:
-        """Stop the chat server."""
+    async def stop(self) -> None:
+        """Stop the chat server and clean up resources."""
         if not self.running:
             return  # Already stopped
         print("Stopping ChatServer...")
         self.running = False
-        # Notify all clients currently connected
-        # Get users under lock before broadcasting shutdown
+
+        # --- Graceful SSE Task Cancellation ---
+        tasks_to_cancel: List[asyncio.Task[Any]] = []
         with self.lock:
+            # Create a list of tasks to cancel while holding the lock
+            tasks_to_cancel = list(self.sse_tasks.values())
+            # Clear the task dictionary immediately
+            self.sse_tasks.clear()
+            # Get users before clearing the main users set
             current_users = list(self.users)
-            # Clear users set but preserve client message queues
-            self.users.clear()
-            # Clear waiting users
-            self.waiting_users.clear()
+            self.users.clear() # Clear the main users set
+
+        print(f"Attempting to cancel {len(tasks_to_cancel)} active SSE tasks...")
+        for task in tasks_to_cancel:
+            task.cancel()
+
+        # Wait for all cancellation tasks to complete
+        if tasks_to_cancel:
+            # return_exceptions=True prevents gather from stopping if one task raises error
+            results = await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+            print(f"SSE task cancellation results: {results}") # Log results/errors
+        print("All active SSE tasks cancelled.")
+        # --- End SSE Task Cancellation ---
+
 
         # Send shutdown message to users who were connected at the moment of shutdown
         shutdown_message = {
@@ -178,36 +151,24 @@ class ChatServer:
             "content": "Server shutting down...",
             "timestamp": datetime.now().strftime("%H:%M:%S"),
         }
+        
         for username in current_users:
             # Add shutdown message to any remaining queues
             if username in self.clients:
                 self.clients[username].append(shutdown_message)
+        
         print(f"Server stopping... Notified {len(current_users)} users.")
-        # Note: SSE streams will naturally terminate when the server stops accepting connections
-
-
-# --- Background Tasks ---
-async def check_waiting_users(chat_server: ChatServer):
-    """
-    Periodically checks for users waiting for responses and sends reminders
-    if no one has responded within 3 seconds.
-    """
-    while chat_server.running:
-        waiting_users = chat_server.get_waiting_users()
-        current_time = time.time()
         
-        for username, wait_start_time in waiting_users.items():
-            # If user has been waiting for 3+ seconds, send a reminder
-            if current_time - wait_start_time >= 10:
-                notification = f"{username} is still waiting for a response"
-                chat_server.broadcast_message("Server", notification)
-                # Update the waiting timestamp to reset the timer
-                with chat_server.lock:
-                    if username in chat_server.waiting_users:
-                        chat_server.waiting_users[username] = current_time
+        # Give clients a moment to process the shutdown message
+        time.sleep(1)
         
-        # Check every second
-        await asyncio.sleep(1)
+        # Final cleanup of all resources
+        with self.lock:
+            # Clear all client message queues to free memory
+            self.clients.clear()
+            
+            # Log cleanup completion
+            print("All server resources cleaned up.")
 
 
 # --- FastAPI Lifespan Management ---
@@ -217,37 +178,16 @@ async def lifespan(app: FastAPI):
     print("Server starting up...")
     app.state.chat_server = ChatServer()  # Store server instance in app state
 
-    # Setup shutdown monitoring task
-    async def monitor_shutdown():
-        # Wait for the shutdown event to be set
-        while not shutdown_event.is_set():
-            await asyncio.sleep(0.1)
-        # Once set, stop the chat server
-        print("Shutdown event detected, stopping chat server...")
-        app.state.chat_server.stop()
-
-    # Start background tasks
-    waiting_users_task = asyncio.create_task(check_waiting_users(app.state.chat_server))
-    shutdown_monitor_task = asyncio.create_task(monitor_shutdown())
-    
-    # Run the application
-    yield
-    
-    # Shutdown was triggered either by signal or application exit
-    print("Server shutting down...")
-    if app.state.chat_server.running:
-        app.state.chat_server.stop()
-    
-    # Cancel background tasks
-    waiting_users_task.cancel()
-    shutdown_monitor_task.cancel()
-    try:
-        await waiting_users_task
-        await shutdown_monitor_task
-    except asyncio.CancelledError:
-        pass
-    
-    print("ChatServer stopped.")
+    try: # Added try/finally for robust shutdown
+        # Run the application
+        yield
+    finally:
+        # Shutdown
+        print("Server shutting down...")
+        chat_server: ChatServer = app.state.chat_server
+        if chat_server:
+            await chat_server.stop() # Await the async stop method
+        print("ChatServer stopped.")
 
 
 # --- FastAPI App ---
@@ -270,7 +210,7 @@ class TalkingStickRequest(BaseModel):
 
 class CheckEventRequest(BaseModel):
     username: str
-
+    delay: int = 1
 
 # --- API Endpoints ---
 @app.get("/", response_class=HTMLResponse)
@@ -410,11 +350,10 @@ async def check_event(data: CheckEventRequest, request: Request):
             )
 
     # Broadcast a system message that user is waiting for a response
-    notification = f"{data.username} is waiting for a response"
+    notification = f"{data.username} has been waiting for a response for {data.delay} seconds..."
     chat_server.broadcast_message("Server", notification)
     
-    # Mark the user as waiting for a response
-    chat_server.mark_user_waiting(data.username)
+    
     
     return {"success": True}
 
@@ -435,8 +374,26 @@ async def events(username: str, request: Request) -> StreamingResponse:
 
     async def event_stream() -> AsyncGenerator[str, None]:
         """Yields SSE messages for the specified user."""
+        last_activity_time = time.time()
+        connection_timeout = 60  # Timeout after 60 seconds of inactivity
+        current_task = asyncio.current_task() # Get the current task
+
+        # Register the task with the server
+        with chat_server.lock:
+            # Only register if server is running and user is considered active
+            if chat_server.running and username in chat_server.users:
+                chat_server.sse_tasks[username] = current_task
+                print(f"SSE Task registered for user: {username}")
+            else:
+                # If server stopped or user unregistered before task could be added, cancel immediately
+                print(f"Server stopped or user {username} not active during SSE task registration. Cancelling stream.")
+                if current_task:
+                    current_task.cancel() # Cancel self
+
+
         try:
             print(f"SSE stream opened for user: {username}")
+            connection_count = 0
             while chat_server.running:
                 # Check if user is still registered *within the loop*
                 # in case they unregistered via another request.
@@ -447,7 +404,13 @@ async def events(username: str, request: Request) -> StreamingResponse:
                             f"User '{username}' no longer registered. Closing SSE stream."
                         )
                         break  # Exit loop if user unregistered
-
+                
+                # Check for connection timeout
+                current_time = time.time()
+                if current_time - last_activity_time > connection_timeout:
+                    print(f"Connection timeout for {username}. Closing SSE stream.")
+                    break
+                
                 messages = chat_server.get_messages(
                     username
                 )  # Method handles its own lock
@@ -459,13 +422,22 @@ async def events(username: str, request: Request) -> StreamingResponse:
                 if messages:
                     data = json.dumps(messages)
                     yield f"data: {data}\n\n"
+                    # Update activity time when data is sent
+                    last_activity_time = time.time()
                     # print(f"Sent {len(messages)} messages to {username}") # Debug logging
                 else:
                     # Send a keepalive comment periodically to prevent timeouts
+                    # Increment connection count for timeout tracking
+                    connection_count += 1
+                    # Standard SSE keepalive comment - clients ignore this
                     yield ": keepalive\n\n"
+                    
+                    # Reset connection_count if it gets too large
+                    if connection_count > 10000:
+                        connection_count = 0
 
                 # Use asyncio.sleep in async functions
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
 
         except asyncio.CancelledError:
             # This happens if the client disconnects
@@ -474,9 +446,20 @@ async def events(username: str, request: Request) -> StreamingResponse:
             print(f"Error in SSE stream for {username}: {e}")
         finally:
             # Clean up when the stream closes (normally or due to error/disconnect)
-            print(f"SSE stream closed for user: {username}")
-            # Don't unregister users automatically, allow them to reconnect
-            # chat_server.unregister_user(username)
+            print(f"SSE stream closing for user: {username}")
+            # Remove task from tracking dict and unregister user
+            with chat_server.lock:
+                removed_task = chat_server.sse_tasks.pop(username, None)
+                if removed_task:
+                    print(f"SSE Task unregistered for user: {username}")
+                # Unregister user if they are still in the users set
+                # This handles cases like timeout or client disconnect cleanly
+                if username in chat_server.users:
+                     chat_server.users.remove(username)
+                     print(f"User {username} unregistered due to SSE stream closure.")
+                 # Optionally clear their message queue if desired upon disconnect
+                 # if username in chat_server.clients:
+                 #     chat_server.clients[username] = []
 
     # Return the streaming response
     return StreamingResponse(event_stream(), media_type="text/event-stream")
@@ -495,49 +478,3 @@ async def get_users(request: Request):
     users = chat_server.get_users()
     return {"users": users}
 
-
-# --- Main Execution ---
-def main():
-    parser = argparse.ArgumentParser(description="FastAPI SSE Chat Server")
-    parser.add_argument(
-        "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)"
-    )
-    parser.add_argument(
-        "--port", type=int, default=8890, help="Server port (default: 8890)"
-    )
-    # Uvicorn has its own --reload flag, better than Flask's debug mode
-    # parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
-
-    args = parser.parse_args()
-
-    print(f"Starting FastAPI SSE Chat Server on http://{args.host}:{args.port}")
-    print("Access API docs at /docs")
-    print("Press Ctrl+C to stop the server")
-
-    # Run Uvicorn programmatically with log configuration to see shutdown messages
-    config = uvicorn.Config(
-        "__main__:app",
-        host=args.host,
-        port=args.port,
-        log_level="info",
-        # Force debug off to avoid reload behavior which can interfere with signal handling
-        # debug=False,
-        # Reduce workers to 1 to simplify signal handling
-        workers=1
-    )
-
-    server = uvicorn.Server(config)
-
-    try:
-        # The server.run() method blocks until the server stops
-        server.run()
-    except KeyboardInterrupt:
-        print("\nKeyboard interrupt received, shutting down gracefully...")
-        shutdown_event.set()
-    finally:
-        print("Server shutdown complete.")
-
-# docker build -t chatroom-server .
-# docker run chatroom-server
-if __name__ == "__main__":
-    main()
