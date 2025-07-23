@@ -105,32 +105,103 @@
         }
         
         .message-content {
-            line-height: 1.4;
+            line-height: 1.5;
         }
         
-        .bot-thinking {
+        .parsed-thinking {
             font-style: italic;
-            opacity: 0.8;
-            background-color: rgba(255, 255, 0, 0.1);
-            padding: 5px;
-            border-radius: 3px;
-            margin: 2px 0;
+            background: linear-gradient(90deg, rgba(255, 255, 0, 0.15), rgba(255, 200, 0, 0.05));
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #ffcc00;
+            position: relative;
         }
         
-        .tool-call, .tool-response {
-            font-family: monospace;
-            background-color: rgba(0, 255, 255, 0.1);
-            padding: 5px;
-            border-radius: 3px;
-            margin: 2px 0;
+        .parsed-thinking::before {
+            content: "💭 ";
+            font-style: normal;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .parsed-tool-call {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.15), rgba(0, 200, 255, 0.05));
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #00ccff;
+            font-size: 13px;
+        }
+        
+        .parsed-tool-call::before {
+            content: "🔧 ";
+            font-style: normal;
+            font-weight: bold;
+            color: #00ccff;
+        }
+        
+        .tool-function {
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 6px;
+        }
+        
+        .tool-args {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 6px;
             font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
         }
         
-        .system-message {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 5px;
-            border-radius: 3px;
-            margin: 2px 0;
+        .parsed-tool-response {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(90deg, rgba(0, 255, 0, 0.15), rgba(0, 200, 0, 0.05));
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #00ff00;
+            font-size: 13px;
+        }
+        
+        .parsed-tool-response::before {
+            content: "⚡ ";
+            font-style: normal;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .parsed-system {
+            background: linear-gradient(90deg, rgba(128, 128, 128, 0.15), rgba(100, 100, 100, 0.05));
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #888888;
+            font-style: italic;
+        }
+        
+        .parsed-system::before {
+            content: "🤖 ";
+            font-style: normal;
+            font-weight: bold;
+            color: #888888;
+        }
+        
+        .parsed-chat {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 6px 0;
+        }
+        
+        .parsed-empty {
+            color: #666;
+            font-style: italic;
+            opacity: 0.7;
         }
         
         @keyframes fadeIn {
@@ -311,43 +382,55 @@
                 <span class="timestamp">[${timestamp}]</span>
             `;
             
-            // Create message content
+            // Create message content using parsed data
             const content = document.createElement('div');
             content.className = 'message-content';
             
-            // Process the content based on type
-            let processedContent = message.content || '';
+            const parsed = message.parsed_content || {};
+            let contentHTML = '';
             
-            // Handle different content types
-            if (processedContent.includes('<bot_thinking>')) {
-                processedContent = processedContent.replace(
-                    /<bot_thinking>(.*?)<\/bot_thinking>/gs,
-                    '<div class="bot-thinking">💭 $1</div>'
-                );
+            switch (parsed.type) {
+                case 'thinking':
+                    contentHTML = `<div class="parsed-thinking">${escapeHtml(parsed.content)}</div>`;
+                    break;
+                    
+                case 'tool_call':
+                    let toolContent = `<div class="parsed-tool-call">`;
+                    if (parsed.function) {
+                        toolContent += `<div class="tool-function">Function: ${escapeHtml(parsed.function)}</div>`;
+                    }
+                    if (parsed.arguments) {
+                        toolContent += `<div class="tool-args">${escapeHtml(parsed.arguments)}</div>`;
+                    } else if (parsed.content) {
+                        toolContent += `<div class="tool-args">${escapeHtml(parsed.content)}</div>`;
+                    }
+                    toolContent += `</div>`;
+                    contentHTML = toolContent;
+                    break;
+                    
+                case 'tool_response':
+                    contentHTML = `<div class="parsed-tool-response">${escapeHtml(parsed.content)}</div>`;
+                    break;
+                    
+                case 'system':
+                    contentHTML = `<div class="parsed-system">${escapeHtml(parsed.content)}</div>`;
+                    break;
+                    
+                case 'chat':
+                    contentHTML = `<div class="parsed-chat">${escapeHtml(parsed.content)}</div>`;
+                    break;
+                    
+                case 'empty':
+                    contentHTML = `<div class="parsed-empty">(empty message)</div>`;
+                    break;
+                    
+                default:
+                    // Fallback to original content
+                    contentHTML = `<div class="parsed-chat">${escapeHtml(message.content || '')}</div>`;
+                    break;
             }
             
-            if (processedContent.includes('<tool_call>')) {
-                processedContent = processedContent.replace(
-                    /<tool_call>(.*?)<\/tool_call>/gs,
-                    '<div class="tool-call">🔧 $1</div>'
-                );
-            }
-            
-            if (processedContent.includes('<tool_response>')) {
-                processedContent = processedContent.replace(
-                    /<tool_response>(.*?)<\/tool_response>/gs,
-                    '<div class="tool-response">⚡ $1</div>'
-                );
-            }
-            
-            if (processedContent.includes('[system]')) {
-                processedContent = processedContent.replace(
-                    /\[system\]/g,
-                    '<span class="system-message">🤖 [system]</span>'
-                );
-            }
-            
-            content.innerHTML = processedContent;
+            content.innerHTML = contentHTML;
             
             entry.appendChild(header);
             entry.appendChild(content);
@@ -364,6 +447,12 @@
             if (autoScroll) {
                 chatContainerEl.scrollTop = chatContainerEl.scrollHeight;
             }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         function clearChat() {
