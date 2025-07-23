@@ -22,7 +22,7 @@ def maybe_init_chatroom(username: str):
     global room
     try:
         if room is None:
-            room = AsyncChatRoom(username=username)
+            room = AsyncChatRoom(username=username, allow_infinite_check=True)
             # Make sure to explicitly trigger the connection
             # so it registers with the server before any other calls
             room._connect()

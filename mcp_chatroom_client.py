@@ -26,6 +26,7 @@ class AsyncChatRoom:
         port: int = 8894,
         username: str = "Claude",
         max_append_length: int = 200,
+        allow_infinite_check: bool = False,
     ):
         self.host = host
         self.port = port
@@ -34,6 +35,7 @@ class AsyncChatRoom:
         self.max_append_length = (
             max_append_length  # Maximum length for a single append operation
         )
+        self.allow_infinite_check = allow_infinite_check
 
         self._draft_segments = []  # list of appended text pieces
         self._queue = deque()  # queue of new messages from other users
@@ -278,11 +280,15 @@ class AsyncChatRoom:
 
         self.maybe_connect()
 
-        # Add a limit to avoid infinite loop
+        # Configuration for retry logic
         delay = 2
+        max_delay = 8  # Cap the delay at 8 seconds
+        max_retries = 5  # Maximum number of retries (when not infinite)
+        retry_count = 0
         first_time = True
 
-        while True:
+        # Use infinite loop if allowed, otherwise limit retries
+        while self.allow_infinite_check or retry_count < max_retries:
             # Check for any new messages in the queue
             msg = self._poll_new_message()
             if len(msg) > 0:
@@ -290,19 +296,27 @@ class AsyncChatRoom:
                 return msg
 
             # Sleep between polls to avoid busy waiting
-            # Slightly longer delay between checks
             # Call the check event endpoint
             if not first_time:
-                requests.post(
-                    f"{self.base_url}/check_event",
-                    json={"username": self.username, "delay": delay},
-                    timeout=5,
-                )
+                try:
+                    requests.post(
+                        f"{self.base_url}/check_event",
+                        json={"username": self.username, "delay": delay},
+                        timeout=5,
+                    )
+                except Exception as e:
+                    print(f"DEBUG: check_event failed: {e}")
                 
 
             time.sleep(delay)
-            delay = 2 * delay
+            delay = min(delay * 2, max_delay)  # Cap at max_delay
+            if not self.allow_infinite_check:
+                retry_count += 1
             first_time = False
+        
+        # If we've exhausted retries (only possible when not infinite), return informative message
+        print(f"DEBUG: check() timed out after {max_retries} retries")
+        return "[system] No new messages found after waiting. You may want to send a message or try again later."
 
     def talking_stick(self) -> Optional[str]:
         """
