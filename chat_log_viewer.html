@@ -23,59 +23,6 @@
             overflow: hidden;
         }
         
-        .notification-bar {
-            background: #f8f9fa;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin: 10px;
-            font-weight: bold;
-            font-size: 16px;
-            color: #2c3e50;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .notification-bar.updated {
-            border-color: #ff0000;
-            background: #fff5f5;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
-            animation: notificationPulse 2s ease-out;
-        }
-        
-        @keyframes notificationPulse {
-            0% {
-                border-color: #ff0000;
-                background: #fff5f5;
-                box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
-            }
-            50% {
-                border-color: #ff3333;
-                background: #ffe0e0;
-                box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
-            }
-            100% {
-                border-color: #ff0000;
-                background: #fff5f5;
-                box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
-            }
-        }
-        
-        .notification-content {
-            flex-grow: 1;
-            word-wrap: break-word;
-            line-height: 1.4;
-        }
-        
-        .notification-user {
-            font-size: 14px;
-            color: #666;
-            margin-right: 10px;
-            flex-shrink: 0;
-        }
         
         
         .status {
@@ -190,7 +137,7 @@
             padding: 8px 12px;
             border-radius: 8px;
             margin: 6px 0;
-            border-left: 4px solid #f39c12;
+            border-left: 4px solid #9c27b0;
             position: relative;
             font-size: 14px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -201,7 +148,7 @@
             content: "💭 ";
             font-style: normal;
             font-weight: bold;
-            color: #f39c12;
+            color: #9c27b0;
         }
         
         .parsed-tool-call {
@@ -210,7 +157,7 @@
             padding: 4px 8px;
             border-radius: 4px;
             margin: 3px 0;
-            border-left: 3px solid #2196f3;
+            border-left: 3px solid #9c27b0;
             font-size: 12px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             color: #2c3e50;
@@ -220,7 +167,7 @@
         
         .tool-function {
             font-weight: bold;
-            color: #1976d2;
+            color: #9c27b0;
             margin-bottom: 2px;
             font-size: 12px;
             line-height: 1.1;
@@ -326,6 +273,33 @@
             border-radius: 8px;
             font-size: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .controls.minimized {
+            padding: 4px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            justify-content: center;
+        }
+        
+        .controls.minimized .control-content {
+            display: none;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 3px;
+            color: #2c3e50;
+        }
+        
+        .toggle-btn:hover {
+            background: #f0f0f0;
         }
         
         .control-buttons {
@@ -420,10 +394,6 @@
 </head>
 <body>
     <div class="container">
-        <div class="notification-bar" id="notificationBar">
-            <div class="notification-user" id="notificationUser">Latest Update:</div>
-            <div class="notification-content" id="notificationContent">No messages yet</div>
-        </div>
         
         <div class="chat-container" id="chatContainer">
             <!-- User columns will be created dynamically -->
@@ -433,14 +403,17 @@
             <!-- Last system message sections for each user -->
         </div>
         
-        <div class="controls">
-            <div id="status" class="status disconnected">
-                Disconnected
-            </div>
-            <div class="control-buttons">
-                <button id="connectBtn" onclick="toggleConnection()">Connect</button>
-                <button onclick="clearChat()">Clear</button>
-                <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+        <div class="controls minimized" id="controls">
+            <button class="toggle-btn" onclick="toggleControls()" title="Toggle controls">⚙️</button>
+            <div class="control-content" id="controlContent">
+                <div id="status" class="status disconnected">
+                    Disconnected
+                </div>
+                <div class="control-buttons">
+                    <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+                    <button onclick="clearChat()">Clear</button>
+                    <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+                </div>
             </div>
         </div>
         
@@ -479,9 +452,8 @@
         const chatContainerEl = document.getElementById('chatContainer');
         const connectBtn = document.getElementById('connectBtn');
         const lastSystemMessagesEl = document.getElementById('lastSystemMessages');
-        const notificationBarEl = document.getElementById('notificationBar');
-        const notificationUserEl = document.getElementById('notificationUser');
-        const notificationContentEl = document.getElementById('notificationContent');
+        
+        let controlsMinimized = true;
         
         function initializeColumns() {
             chatContainerEl.innerHTML = '';
@@ -553,7 +525,7 @@
                 
                 const systemContent = document.createElement('div');
                 systemContent.className = 'last-system-content';
-                systemContent.textContent = 'No system messages yet';
+                systemContent.innerHTML = 'No system messages yet';
                 systemContent.id = `last-system-content-${i}`;
                 
                 systemSection.appendChild(systemHeader);
@@ -586,13 +558,15 @@
                 userList.push(username);
                 userToColumnMap[username] = columnIndex;
                 
-                // Update column headers
+                // Update column headers with colored usernames
                 const thinkingHeader = columnElements[columnIndex].thinkingHeader;
                 const functionHeader = columnElements[columnIndex].functionHeader;
                 const systemHeader = columnElements[columnIndex].systemHeader;
-                thinkingHeader.textContent = `${username}`;
+                const userColor = userColorMap[username] || '#2c3e50';
+                
+                thinkingHeader.innerHTML = `<span style="color: ${userColor}; font-weight: bold;">${username}</span>`;
                 functionHeader.textContent = ``;
-                systemHeader.textContent = `${username} - Last System Message`;
+                systemHeader.innerHTML = `<span style="color: ${userColor}; font-weight: bold;">${username}</span> - Last System Message`;
                 
                 return columnIndex;
             }
@@ -770,7 +744,7 @@
             
             switch (parsed.type) {
                 case 'thinking':
-                    contentHTML=`<div class="parsed-thinking">${escapeHtml(parsed.content||'')}</div>`;
+                    contentHTML=`<div class="parsed-thinking">${colorizeUsernames(escapeHtml(parsed.content||''))}</div>`;
                     break;
 
                 case 'tool_call':
@@ -786,7 +760,7 @@
                     break;
 
                 case 'tool_response':
-                    contentHTML=`<div class="parsed-tool-response">${escapeHtml(parsed.content||'')}</div>`;
+                    contentHTML=`<div class="parsed-tool-response">${colorizeUsernames(escapeHtml(parsed.content||''))}</div>`;
                     break;
 
 
@@ -795,9 +769,9 @@
                     let chatContent = parsed.content || '';
                     
                     if (fromUser && columnType === 'function') {
-                        chatContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${escapeHtml(chatContent)}`;
+                        chatContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${colorizeUsernames(escapeHtml(chatContent))}`;
                     } else {
-                        chatContent = escapeHtml(chatContent);
+                        chatContent = colorizeUsernames(escapeHtml(chatContent));
                     }
                     
                     contentHTML=`<div class="parsed-chat">${chatContent}</div>`;
@@ -807,9 +781,9 @@
                     // Fallback to parsed content
                     let defaultContent = parsed.content || 'No content';
                     if (fromUser && columnType === 'function') {
-                        defaultContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${escapeHtml(defaultContent)}`;
+                        defaultContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${colorizeUsernames(escapeHtml(defaultContent))}`;
                     } else {
-                        defaultContent = escapeHtml(defaultContent);
+                        defaultContent = colorizeUsernames(escapeHtml(defaultContent));
                     }
                     contentHTML=`<div class="parsed-chat">${defaultContent}</div>`;
                     break;
@@ -839,7 +813,6 @@
                 displayContent = `Function: ${parsed.function}`;
             }
             
-            updateNotificationBar(username, displayContent);
             
             // Remove old entries if we have too many in this column
             while (columnMessages.children.length > MAX_ENTRIES_PER_COLUMN) {
@@ -858,36 +831,24 @@
             return div.innerHTML;
         }
         
-        function updateNotificationBar(username, content, messageType = 'message') {
-            // Update notification bar content
-            if (messageType === 'system') {
-                notificationUserEl.textContent = `${username} - System:`;
-            } else {
-                notificationUserEl.textContent = `${username}:`;
-            }
-            
-            // Limit content length for display
-            const maxLength = 200;
-            const displayContent = content.length > maxLength ? 
-                content.substring(0, maxLength) + '...' : content;
-            
-            notificationContentEl.textContent = displayContent;
-            
-            // Add animation
-            notificationBarEl.classList.add('updated');
-            
-            // Remove animation after completion
-            setTimeout(() => {
-                notificationBarEl.classList.remove('updated');
-            }, 1000);
+        function colorizeUsernames(text) {
+            let colorizedText = text;
+            // Color usernames that appear in the text
+            Object.keys(userColorMap).forEach(username => {
+                const color = userColorMap[username];
+                const regex = new RegExp(`\\b${username}\\b`, 'gi');
+                colorizedText = colorizedText.replace(regex, `<span style="color: ${color}; font-weight: bold;">${username}</span>`);
+            });
+            return colorizedText;
         }
+        
         
         function updateLastSystemMessage(columnIndex, content) {
             if (content && content.trim() && columnIndex >= 0 && columnIndex < NUM_USERS) {
                 const systemContent = columnElements[columnIndex].systemContent;
                 const systemSection = columnElements[columnIndex].systemSection;
                 
-                systemContent.textContent = content.trim();
+                systemContent.innerHTML = colorizeUsernames(escapeHtml(content.trim()));
                 
                 // Add bright red border animation
                 systemSection.classList.add('updated');
@@ -897,9 +858,6 @@
                     systemSection.classList.remove('updated');
                 }, 1000);
                 
-                // Update notification bar with system message
-                const username = userList[columnIndex] || `User ${columnIndex + 1}`;
-                updateNotificationBar(username, content.trim(), 'system');
             }
         }
         
@@ -912,15 +870,11 @@
             }
             totalReceived = 0;
             
-            // Reset notification bar
-            notificationUserEl.textContent = 'Latest Update:';
-            notificationContentEl.textContent = 'No messages yet';
-            notificationBarEl.classList.remove('updated');
             
             // Reset last system messages
             for (let i = 0; i < NUM_USERS; i++) {
                 if (columnElements[i] && columnElements[i].systemContent) {
-                    columnElements[i].systemContent.textContent = 'No system messages yet';
+                    columnElements[i].systemContent.innerHTML = 'No system messages yet';
                     // Remove any lingering animation classes
                     if (columnElements[i].systemSection) {
                         columnElements[i].systemSection.classList.remove('updated');
@@ -933,10 +887,10 @@
             userToColumnMap = {};
             userColorMap = {};
             for (let i = 0; i < NUM_USERS; i++) {
-                columnElements[i].thinkingHeader.textContent = `User ${i + 1}`;
+                columnElements[i].thinkingHeader.innerHTML = `User ${i + 1}`;
                 columnElements[i].functionHeader.textContent = ``;
                 if (columnElements[i].systemHeader) {
-                    columnElements[i].systemHeader.textContent = `User ${i + 1} - Last System Message`;
+                    columnElements[i].systemHeader.innerHTML = `User ${i + 1} - Last System Message`;
                 }
             }
         }
@@ -945,6 +899,17 @@
             autoScroll = !autoScroll;
             const button = event.target;
             button.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+        
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            controlsMinimized = !controlsMinimized;
+            
+            if (controlsMinimized) {
+                controls.classList.add('minimized');
+            } else {
+                controls.classList.remove('minimized');
+            }
         }
         
         
