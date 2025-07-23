@@ -260,8 +260,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="MCP Client with OpenAI Message Chain")
     parser.add_argument(
         "--model",
-        # default="moonshotai/kimi-k2",
-        default="anthropic/claude-sonnet-4",
+        default="moonshotai/kimi-k2",
+        # default="anthropic/claude-sonnet-4",
         # default="gpt-4.1-nano",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
