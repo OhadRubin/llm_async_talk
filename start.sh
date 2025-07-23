@@ -5,4 +5,4 @@
 # sleep 5
 # trap 'docker-compose down; exit' INT
 # python cli_chatroom_client.py
-uvicorn chatroom_server:app --host 0.0.0.0 --port 8894 &     
+uvicorn chatroom_server:app --host 0.0.0.0 --port 8894  

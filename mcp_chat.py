@@ -23,8 +23,26 @@ from typing import Callable, Any
 import functools
 import contextvars
 
-# Context variable to store the current prefix
+# Context variable to store the current prefix and color
 current_prefix = contextvars.ContextVar('current_prefix', default='')
+current_color = contextvars.ContextVar('current_color', default='')
+
+# ANSI color codes
+class Colors:
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    BRIGHT_RED = '\033[91m'
+    BRIGHT_GREEN = '\033[92m'
+    BRIGHT_YELLOW = '\033[93m'
+    BRIGHT_BLUE = '\033[94m'
+    BRIGHT_MAGENTA = '\033[95m'
+    BRIGHT_CYAN = '\033[96m'
+    RESET = '\033[0m'
 
 # Global lock for stdout access
 _stdout_lock = threading.Lock()
@@ -32,15 +50,42 @@ _stdout_lock = threading.Lock()
 class PrefixedOutput:
     """A custom stdout wrapper that prefixes each line with the current context prefix."""
     
-    def __init__(self, original_stdout=None):
+    def __init__(self, original_stdout=None, log_file_path=None):
         self.original_stdout = original_stdout or sys.stdout
         self.buffer = ""
+        self.log_file_path = log_file_path
+        
+    def _write_to_log(self, text: str):
+        """Write text to log file as JSONL entries if log file path is set."""
+        if self.log_file_path and text.strip():  # Only log non-empty lines
+            try:
+                import datetime
+                import json
+                timestamp = datetime.datetime.now().isoformat()
+                prefix = current_prefix.get('')
+                
+                with open(self.log_file_path, 'a', encoding='utf-8') as f:
+                    # Split text into lines and create JSON entry for each non-empty line
+                    lines = text.split('\n')
+                    for line in lines:
+                        if line.strip():  # Only log non-empty lines
+                            log_entry = {
+                                "timestamp": timestamp,
+                                "user": prefix,
+                                "content": line.strip()
+                            }
+                            f.write(json.dumps(log_entry) + '\n')
+                    f.flush()
+            except Exception as e:
+                # If logging fails, don't crash the program
+                pass
         
     def write(self, text: str) -> int:
         if not text:
             return 0
             
         prefix = current_prefix.get('')
+        color = current_color.get('')
         
         with _stdout_lock:  # Thread-safe access to stdout
             # Buffer the text and process line by line
@@ -57,11 +102,23 @@ class PrefixedOutput:
             # Write complete lines with prefix
             for line in lines:
                 if line and prefix:  # Only prefix non-empty lines when prefix is set
-                    self.original_stdout.write(f"{prefix} | {line}\n")
+                    if color:
+                        # Write with color to stdout
+                        formatted_line = f"{color}{prefix}{Colors.RESET} | {line}\n"
+                        self.original_stdout.write(formatted_line)
+                        # Write without color to log file
+                        self._write_to_log(f"{prefix} | {line}\n")
+                    else:
+                        formatted_line = f"{prefix} | {line}\n"
+                        self.original_stdout.write(formatted_line)
+                        self._write_to_log(formatted_line)
                 elif line:
-                    self.original_stdout.write(f"{line}\n")
+                    formatted_line = f"{line}\n"
+                    self.original_stdout.write(formatted_line)
+                    self._write_to_log(formatted_line)
                 else:
                     self.original_stdout.write("\n")
+                    self._write_to_log("\n")
             
             self.original_stdout.flush()
         
@@ -69,13 +126,25 @@ class PrefixedOutput:
     
     def flush(self):
         prefix = current_prefix.get('')
+        color = current_color.get('')
         with _stdout_lock:
             # Flush any remaining buffer content
             if self.buffer:
                 if prefix:
-                    self.original_stdout.write(f"{prefix} | {self.buffer}\n")
+                    if color:
+                        # Write with color to stdout
+                        formatted_line = f"{color}{prefix}{Colors.RESET} | {self.buffer}\n"
+                        self.original_stdout.write(formatted_line)
+                        # Write without color to log file
+                        self._write_to_log(f"{prefix} | {self.buffer}\n")
+                    else:
+                        formatted_line = f"{prefix} | {self.buffer}\n"
+                        self.original_stdout.write(formatted_line)
+                        self._write_to_log(formatted_line)
                 else:
-                    self.original_stdout.write(f"{self.buffer}\n")
+                    formatted_line = f"{self.buffer}\n"
+                    self.original_stdout.write(formatted_line)
+                    self._write_to_log(formatted_line)
                 self.buffer = ""
             self.original_stdout.flush()
         
@@ -83,48 +152,40 @@ class PrefixedOutput:
         # Delegate other attributes to original stdout
         return getattr(self.original_stdout, name)
 
-# Global prefixed output instance
+# Global prefixed output instance (will be updated with log file path in main)
 _prefixed_stdout = PrefixedOutput()
 
 # Replace sys.stdout with our prefixed version
 sys.stdout = _prefixed_stdout
 
-async def run_with_prefix(func: Callable, prefix: str, *args, **kwargs):
+def set_log_file(log_file_path: str):
+    """Update the global PrefixedOutput instance with a log file path."""
+    global _prefixed_stdout
+    _prefixed_stdout.log_file_path = log_file_path
+
+async def run_with_prefix(func: Callable, prefix: str, color: str = '', *args, **kwargs):
     """Run an async function with prefixed output using contextvars."""
-    # Set the prefix for this async context
-    token = current_prefix.set(prefix)
+    # Set the prefix and color for this async context
+    prefix_token = current_prefix.set(prefix)
+    color_token = current_color.set(color)
     try:
         return await func(*args, **kwargs)
     finally:
         # Reset the context
-        current_prefix.reset(token)
+        current_prefix.reset(prefix_token)
+        current_color.reset(color_token)
 
 
-# async def generic_server(server_id: int):
-#     print(f"Generic server {server_id} starting...")
-#     await asyncio.sleep(0.1 * server_id)
-#     print(f"Processing on server {server_id}")
-#     await asyncio.sleep(0.2)
-#     print(f"Server {server_id} done")
+def get_user_color(username: str) -> str:
+    """Get a consistent color for a username based on hash."""
+    color_list = [
+        Colors.RED, Colors.GREEN, Colors.YELLOW, Colors.BLUE, 
+        Colors.MAGENTA, Colors.CYAN, Colors.BRIGHT_RED, Colors.BRIGHT_GREEN,
+        Colors.BRIGHT_YELLOW, Colors.BRIGHT_BLUE, Colors.BRIGHT_MAGENTA, Colors.BRIGHT_CYAN
+    ]
+    return color_list[hash(username) % len(color_list)]
 
 
-# async def main():
-#     # Run multiple async functions concurrently
-#     tasks = [
-#         server1(),
-#         server2(),
-#         server3(),
-#         run_with_prefix(generic_server, "generic-server-4", 4),
-#         run_with_prefix(generic_server, "generic-server-5", 5),
-#     ]
-    
-#     await asyncio.gather(*tasks)
-
-
-# if __name__ == "__main__":
-#     print("Starting async functions with prefixed output...\n")
-#     asyncio.run(main())
-#     print("\nAll tasks completed!")
 
 @dataclass
 class ChatSessionConfig:
@@ -253,6 +314,8 @@ When you are given the instruction "Login" by the user, continue speaking until 
             await cleanup_servers(servers)
     return run_chat_session
 
+import pathlib
+import datetime
 
 def main() -> None:
     """Initialize and run the chat session."""
@@ -260,8 +323,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="MCP Client with OpenAI Message Chain")
     parser.add_argument(
         "--model",
-        default="moonshotai/kimi-k2",
-        # default="anthropic/claude-sonnet-4",
+        # default="moonshotai/kimi-k2",
+        default="anthropic/claude-sonnet-4",
         # default="gpt-4.1-nano",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
@@ -297,6 +360,34 @@ def main() -> None:
     args.enable_mcp = not args.disable_mcp
 
     config = Configuration()
+    # Create logs directory if it doesn't exist
+    logs_dir = "logs"
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
+    
+    # Create log file with timestamp
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(logs_dir, f"chat_session_{timestamp}.log")
+    
+    # Create the log file with initial session info as JSONL
+    with open(log_file, 'w') as f:
+        import json
+        session_start = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "user": "system",
+            "type": "session_start",
+            "content": "Chat session started",
+            "metadata": {
+                "model": args.model,
+                "base_url": args.base_url,
+                "experiment_directory": args.exp_dir
+            }
+        }
+        f.write(json.dumps(session_start) + '\n')
+    
+    # Set the log file for PrefixedOutput
+    set_log_file(log_file)
 
     chat_config = ChatSessionConfig(
         enable_mcp=args.enable_mcp,
@@ -311,10 +402,10 @@ def main() -> None:
     
     if len(chat_sessions) == 1:
         session_func, username = chat_sessions[0]
-        asyncio.run(run_with_prefix(session_func, username, chat_config))
+        asyncio.run(run_with_prefix(session_func, username, get_user_color(username), chat_config))
     else:
         async def run_all_sessions():
-            tasks = [run_with_prefix(session_func, username, chat_config) 
+            tasks = [run_with_prefix(session_func, username, get_user_color(username), chat_config) 
                     for session_func, username in chat_sessions]
             await asyncio.gather(*tasks)
         asyncio.run(run_all_sessions())

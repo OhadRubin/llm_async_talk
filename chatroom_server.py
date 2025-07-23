@@ -304,6 +304,9 @@ async def send(data: SendRequest, request: Request):
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not registered"
             )
 
+    # Log when a user sends a message
+    print(f"[SERVER] {data.username} sent message: {data.message}")
+    
     # Broadcast the message (method handles its own locking)
     chat_server.broadcast_message(data.username, data.message)
     return {"success": True}

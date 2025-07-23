@@ -342,11 +342,12 @@ class AsyncChatRoom:
             self._has_talking_stick = True
 
             # Return any new messages
-            return self._poll_new_message()
+            msgs = self._poll_new_message()
+            return "\n".join(["[system] You have the talking stick.",msgs])
         except Exception as e:
             print(f"Failed to claim talking stick: {e}")
             self._add_system_message(f"Failed to claim talking stick: {str(e)}")
-            return self._poll_new_message()
+            return f"[system] Failed to claim talking stick: {e}\n" + self._poll_new_message()
 
     def append(self, text: str) -> Optional[str]:
         """
