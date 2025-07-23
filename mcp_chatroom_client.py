@@ -343,7 +343,11 @@ class AsyncChatRoom:
 
             # Return any new messages
             msgs = self._poll_new_message()
-            return "\n".join(["[system] You have the talking stick.",msgs])
+            if msgs:
+                return "\n".join(["[system] You have the talking stick.",msgs])
+            else:
+                return "[system] You have the talking stick."
+            
         except Exception as e:
             print(f"Failed to claim talking stick: {e}")
             self._add_system_message(f"Failed to claim talking stick: {str(e)}")

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Log Viewer</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+        }
+        
+        .connected {
+            background-color: rgba(0, 255, 0, 0.1);
+        }
+        
+        .disconnected {
+            background-color: rgba(255, 0, 0, 0.1);
+            color: #ff0000;
+            border-color: #ff0000;
+        }
+        
+        .chat-container {
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #00ff00;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+        }
+        
+        .message-entry {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-left: 4px solid;
+            padding-left: 15px;
+            font-size: 14px;
+            animation: fadeIn 0.3s ease-in;
+            word-wrap: break-word;
+        }
+        
+        .user-system {
+            border-color: #888888;
+            color: #cccccc;
+            background-color: rgba(136, 136, 136, 0.1);
+        }
+        
+        .user-Micheal {
+            border-color: #00ff00;
+            color: #00ff00;
+            background-color: rgba(0, 255, 0, 0.05);
+        }
+        
+        .user-Jim {
+            border-color: #0099ff;
+            color: #0099ff;
+            background-color: rgba(0, 153, 255, 0.05);
+        }
+        
+        .user-Dwight {
+            border-color: #ff9900;
+            color: #ff9900;
+            background-color: rgba(255, 153, 0, 0.05);
+        }
+        
+        .user-default {
+            border-color: #ffffff;
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .message-content {
+            line-height: 1.4;
+        }
+        
+        .bot-thinking {
+            font-style: italic;
+            opacity: 0.8;
+            background-color: rgba(255, 255, 0, 0.1);
+            padding: 5px;
+            border-radius: 3px;
+            margin: 2px 0;
+        }
+        
+        .tool-call, .tool-response {
+            font-family: monospace;
+            background-color: rgba(0, 255, 255, 0.1);
+            padding: 5px;
+            border-radius: 3px;
+            margin: 2px 0;
+            font-size: 12px;
+        }
+        
+        .system-message {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 5px;
+            border-radius: 3px;
+            margin: 2px 0;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 0 5px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background-color: #00cc00;
+        }
+        
+        button:disabled {
+            background-color: #666;
+            color: #333;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background-color: rgba(0, 255, 0, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CHAT LOG VIEWER</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <!-- Chat messages will appear here -->
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+            <button onclick="clearChat()">Clear</button>
+            <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+        </div>
+        
+        <div class="stats" id="stats">
+            <div class="stat-item">Total received: <span id="totalCount">0</span></div>
+            <div class="stat-item">Current message: <span id="currentIndex">0</span>/<span id="totalMessages">0</span></div>
+            <div class="stat-item">Rate: <span id="messageRate">0</span>/sec</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        let totalReceived = 0;
+        let lastCount = 0;
+        let maxEntries = 200; // Keep only last 200 entries to prevent memory issues
+        let autoScroll = true;
+        
+        const statusEl = document.getElementById('status');
+        const chatContainerEl = document.getElementById('chatContainer');
+        const connectBtn = document.getElementById('connectBtn');
+        const totalCountEl = document.getElementById('totalCount');
+        const currentIndexEl = document.getElementById('currentIndex');
+        const totalMessagesEl = document.getElementById('totalMessages');
+        const messageRateEl = document.getElementById('messageRate');
+        
+        function connect() {
+            try {
+                ws = new WebSocket('ws://localhost:8080');
+                
+                ws.onopen = () => {
+                    isConnected = true;
+                    statusEl.textContent = 'Connected to Chat Log Server';
+                    statusEl.className = 'status connected';
+                    connectBtn.textContent = 'Disconnect';
+                    console.log('Connected to WebSocket server');
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'chat_message') {
+                        displayMessage(data);
+                        totalReceived++;
+                        currentIndexEl.textContent = (data.index + 1);
+                        totalCountEl.textContent = totalReceived;
+                    } else if (data.type === 'welcome') {
+                        console.log(data.message);
+                        if (data.total_messages) {
+                            totalMessagesEl.textContent = data.total_messages;
+                        }
+                    }
+                };
+                
+                ws.onclose = () => {
+                    isConnected = false;
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.className = 'status disconnected';
+                    connectBtn.textContent = 'Connect';
+                    console.log('Disconnected from WebSocket server');
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    statusEl.textContent = 'Connection Error';
+                    statusEl.className = 'status disconnected';
+                };
+                
+            } catch (error) {
+                console.error('Failed to connect:', error);
+                alert('Failed to connect to WebSocket server. Make sure the server is running.');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+        
+        function displayMessage(message) {
+            const entry = document.createElement('div');
+            const userClass = message.user ? `user-${message.user}` : 'user-default';
+            entry.className = `message-entry ${userClass}`;
+            
+            // Format timestamp
+            const timestamp = message.timestamp ? 
+                new Date(message.timestamp).toLocaleTimeString() : 
+                new Date().toLocaleTimeString();
+            
+            // Create message header
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.innerHTML = `
+                <span>${message.user || 'Unknown'}</span>
+                <span class="timestamp">[${timestamp}]</span>
+            `;
+            
+            // Create message content
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            
+            // Process the content based on type
+            let processedContent = message.content || '';
+            
+            // Handle different content types
+            if (processedContent.includes('<bot_thinking>')) {
+                processedContent = processedContent.replace(
+                    /<bot_thinking>(.*?)<\/bot_thinking>/gs,
+                    '<div class="bot-thinking">💭 $1</div>'
+                );
+            }
+            
+            if (processedContent.includes('<tool_call>')) {
+                processedContent = processedContent.replace(
+                    /<tool_call>(.*?)<\/tool_call>/gs,
+                    '<div class="tool-call">🔧 $1</div>'
+                );
+            }
+            
+            if (processedContent.includes('<tool_response>')) {
+                processedContent = processedContent.replace(
+                    /<tool_response>(.*?)<\/tool_response>/gs,
+                    '<div class="tool-response">⚡ $1</div>'
+                );
+            }
+            
+            if (processedContent.includes('[system]')) {
+                processedContent = processedContent.replace(
+                    /\[system\]/g,
+                    '<span class="system-message">🤖 [system]</span>'
+                );
+            }
+            
+            content.innerHTML = processedContent;
+            
+            entry.appendChild(header);
+            entry.appendChild(content);
+            
+            // Add to bottom of chat (chronological order)
+            chatContainerEl.appendChild(entry);
+            
+            // Remove old entries if we have too many
+            while (chatContainerEl.children.length > maxEntries) {
+                chatContainerEl.removeChild(chatContainerEl.firstChild);
+            }
+            
+            // Auto-scroll to bottom if enabled
+            if (autoScroll) {
+                chatContainerEl.scrollTop = chatContainerEl.scrollHeight;
+            }
+        }
+        
+        function clearChat() {
+            chatContainerEl.innerHTML = '';
+            totalReceived = 0;
+            totalCountEl.textContent = '0';
+            currentIndexEl.textContent = '0';
+        }
+        
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            const button = event.target;
+            button.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+        
+        // Update stats every second
+        setInterval(() => {
+            const rate = totalReceived - lastCount;
+            lastCount = totalReceived;
+            messageRateEl.textContent = rate;
+        }, 1000);
+        
+        // Auto-connect on page load
+        window.addEventListener('load', () => {
+            // Give a moment for the page to render before connecting
+            setTimeout(connect, 500);
+        });
+        
+        // Handle manual scrolling - disable auto-scroll if user scrolls up
+        chatContainerEl.addEventListener('scroll', () => {
+            const isAtBottom = chatContainerEl.scrollTop + chatContainerEl.clientHeight >= 
+                              chatContainerEl.scrollHeight - 10;
+            
+            if (!isAtBottom && autoScroll) {
+                // User scrolled up, but don't change the button state
+                // Just temporarily disable auto-scroll behavior
+            }
+        });
+    </script>
+</body>
+</html>

@@ -65,16 +65,12 @@ class PrefixedOutput:
                 prefix = current_prefix.get('')
                 
                 with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                    # Split text into lines and create JSON entry for each non-empty line
-                    lines = text.split('\n')
-                    for line in lines:
-                        if line.strip():  # Only log non-empty lines
-                            log_entry = {
-                                "timestamp": timestamp,
-                                "user": prefix,
-                                "content": line.strip()
-                            }
-                            f.write(json.dumps(log_entry) + '\n')
+                    log_entry = {
+                        "timestamp": timestamp,
+                        "user": prefix,
+                        "content": text.rstrip('\n')  # Remove trailing newline but preserve internal ones
+                    }
+                    f.write(json.dumps(log_entry) + '\n')
                     f.flush()
             except Exception as e:
                 # If logging fails, don't crash the program

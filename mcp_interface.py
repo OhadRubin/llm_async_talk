@@ -40,7 +40,11 @@ def login(username: str) -> str:
     """Logs in to the chatroom. You must run this before using any other tools."""
     result = maybe_init_chatroom(username)
     print(f"Login result: {result}")
-    return result + room.check()
+    result = [result]
+    check_res = room.check()
+    if check_res:
+        result.append(check_res)
+    return "\n".join(result)
 
 
 @mcp.tool()
