@@ -6,90 +6,176 @@
     <title>Chat Log Viewer</title>
     <style>
         body {
-            font-family: 'Courier New', monospace;
-            background-color: #1a1a1a;
-            color: #ffffff;
-            padding: 20px;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #2c3e50;
+            padding: 0;
             margin: 0;
         }
         
         .container {
-            max-width: 1000px;
-            margin: 0 auto;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            max-height: 100vh;
+            overflow: hidden;
         }
         
-        h1 {
-            text-align: center;
-            color: #00ff00;
-            text-shadow: 0 0 10px #00ff00;
-        }
         
         .status {
             text-align: center;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #00ff00;
-            border-radius: 5px;
+            padding: 12px 20px;
+            border: 2px solid #ffffff;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 20px;
         }
         
         .connected {
-            background-color: rgba(0, 255, 0, 0.1);
+            background: rgba(46, 204, 113, 0.3);
+            border-color: #2ecc71;
+            color: #ffffff;
         }
         
         .disconnected {
-            background-color: rgba(255, 0, 0, 0.1);
-            color: #ff0000;
-            border-color: #ff0000;
+            background: rgba(231, 76, 60, 0.3);
+            color: #ffffff;
+            border-color: #e74c3c;
         }
         
         .chat-container {
-            height: 600px;
-            overflow-y: auto;
-            border: 1px solid #00ff00;
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 15px;
             padding: 15px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            border-radius: 15px;
+            margin: 10px 10px 0 10px;
+            min-height: 0;
+            max-height: 100%;
+        }
+        
+        .user-column {
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .user-column-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            border: 3px solid;
+            font-size: 18px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .user-column-header:empty {
+            display: none;
+        }
+        
+        .user-column-header:empty + .user-column-messages {
+            margin-top: 0;
+            flex: 1;
+        }
+        
+        .user-column-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 0;
+            max-height: 100%;
         }
         
         .message-entry {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-left: 4px solid;
-            padding-left: 15px;
+            margin-bottom: 15px;
+            padding: 15px 20px;
+            border-left: 5px solid;
             font-size: 14px;
             animation: fadeIn 0.3s ease-in;
             word-wrap: break-word;
+            border-radius: 15px;
+            line-height: 1.5;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.9);
+            flex-shrink: 0;
         }
         
         .user-system {
-            border-color: #888888;
-            color: #cccccc;
-            background-color: rgba(136, 136, 136, 0.1);
+            border-color: #95a5a6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
         }
         
-        .user-Micheal {
-            border-color: #00ff00;
-            color: #00ff00;
-            background-color: rgba(0, 255, 0, 0.05);
+        .user-0 {
+            border-color: #e74c3c;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #ffecec 0%, #ffd6d6 100%);
         }
         
-        .user-Jim {
-            border-color: #0099ff;
-            color: #0099ff;
-            background-color: rgba(0, 153, 255, 0.05);
+        .user-1 {
+            border-color: #3498db;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #ebf3fd 0%, #d4edfc 100%);
         }
         
-        .user-Dwight {
-            border-color: #ff9900;
-            color: #ff9900;
-            background-color: rgba(255, 153, 0, 0.05);
+        .user-2 {
+            border-color: #f39c12;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #fef9e7 0%, #fcf3cf 100%);
+        }
+        
+        .user-3 {
+            border-color: #9b59b6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f4ecf7 0%, #e8daef 100%);
+        }
+        
+        .user-4 {
+            border-color: #2ecc71;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #eafaf1 0%, #d5f4e6 100%);
+        }
+        
+        .user-5 {
+            border-color: #e67e22;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #fdf2e9 0%, #fae5d3 100%);
         }
         
         .user-default {
-            border-color: #ffffff;
-            color: #ffffff;
-            background-color: rgba(255, 255, 255, 0.05);
+            border-color: #34495e;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         }
+        
+        .column-header-0 { border-color: #e74c3c; color: #e74c3c; }
+        .column-header-1 { border-color: #3498db; color: #3498db; }
+        .column-header-2 { border-color: #f39c12; color: #f39c12; }
+        .column-header-3 { border-color: #9b59b6; color: #9b59b6; }
+        .column-header-4 { border-color: #2ecc71; color: #2ecc71; }
+        .column-header-5 { border-color: #e67e22; color: #e67e22; }
         
         .message-header {
             font-weight: bold;
@@ -110,98 +196,117 @@
         
         .parsed-thinking {
             font-style: italic;
-            background: linear-gradient(90deg, rgba(255, 255, 0, 0.15), rgba(255, 200, 0, 0.05));
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            border-left: 4px solid #ffcc00;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 12px 0;
+            border-left: 6px solid #f39c12;
             position: relative;
+            font-size: 14px;
+            box-shadow: 0 3px 15px rgba(243, 156, 18, 0.2);
+            color: #2c3e50;
         }
         
         .parsed-thinking::before {
             content: "💭 ";
             font-style: normal;
             font-weight: bold;
-            color: #ffcc00;
+            color: #f39c12;
         }
         
         .parsed-tool-call {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.15), rgba(0, 200, 255, 0.05));
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            border-left: 4px solid #00ccff;
-            font-size: 13px;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 12px 0;
+            border-left: 6px solid #2196f3;
+            font-size: 14px;
+            box-shadow: 0 3px 15px rgba(33, 150, 243, 0.2);
+            color: #2c3e50;
         }
         
         .parsed-tool-call::before {
             content: "🔧 ";
             font-style: normal;
             font-weight: bold;
-            color: #00ccff;
+            color: #2196f3;
         }
         
         .tool-function {
             font-weight: bold;
-            color: #00ffff;
-            margin-bottom: 6px;
+            color: #1976d2;
+            margin-bottom: 8px;
+            font-size: 15px;
         }
         
         .tool-args {
-            background-color: rgba(0, 0, 0, 0.3);
-            padding: 8px;
-            border-radius: 4px;
-            margin-top: 6px;
-            font-size: 12px;
-            max-height: 100px;
+            background: rgba(255,255,255,0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+            max-height: 120px;
             overflow-y: auto;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            color: #37474f;
         }
         
         .parsed-tool-response {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(90deg, rgba(0, 255, 0, 0.15), rgba(0, 200, 0, 0.05));
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            border-left: 4px solid #00ff00;
-            font-size: 13px;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 12px 0;
+            border-left: 6px solid #4caf50;
+            font-size: 14px;
+            box-shadow: 0 3px 15px rgba(76, 175, 80, 0.2);
+            color: #2c3e50;
         }
         
         .parsed-tool-response::before {
             content: "⚡ ";
             font-style: normal;
             font-weight: bold;
-            color: #00ff00;
+            color: #4caf50;
         }
         
         .parsed-system {
-            background: linear-gradient(90deg, rgba(128, 128, 128, 0.15), rgba(100, 100, 100, 0.05));
-            padding: 12px;
-            border-radius: 8px;
-            margin: 8px 0;
-            border-left: 4px solid #888888;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 12px 0;
+            border-left: 6px solid #9c27b0;
             font-style: italic;
+            font-size: 14px;
+            box-shadow: 0 3px 15px rgba(156, 39, 176, 0.2);
+            color: #2c3e50;
         }
         
         .parsed-system::before {
             content: "🤖 ";
             font-style: normal;
             font-weight: bold;
-            color: #888888;
+            color: #9c27b0;
         }
         
         .parsed-chat {
-            background: rgba(255, 255, 255, 0.02);
-            padding: 10px;
-            border-radius: 6px;
-            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #2c3e50;
         }
         
         .parsed-empty {
-            color: #666;
+            color: #7f8c8d;
             font-style: italic;
-            opacity: 0.7;
+            opacity: 0.8;
+            background: rgba(236, 240, 241, 0.5);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
         }
         
         @keyframes fadeIn {
@@ -216,66 +321,88 @@
         }
         
         .controls {
-            text-align: center;
-            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin: 10px;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
         }
         
         button {
-            background-color: #00ff00;
-            color: #000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 25px;
             font-size: 16px;
             cursor: pointer;
-            border-radius: 5px;
-            margin: 0 5px;
-            font-family: 'Courier New', monospace;
+            border-radius: 25px;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
         }
         
         button:hover {
-            background-color: #00cc00;
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         
         button:disabled {
-            background-color: #666;
-            color: #333;
+            background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
+            color: #718096;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .stats {
             text-align: center;
-            margin-top: 20px;
             font-size: 14px;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin: 10px;
         }
         
         .stat-item {
-            background-color: rgba(0, 255, 0, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #00ff00;
+            background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 100%);
+            padding: 12px;
+            border-radius: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            color: #2c3e50;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>CHAT LOG VIEWER</h1>
-        
-        <div id="status" class="status disconnected">
-            Disconnected
-        </div>
-        
         <div class="chat-container" id="chatContainer">
-            <!-- Chat messages will appear here -->
+            <!-- User columns will be created dynamically -->
         </div>
         
         <div class="controls">
-            <button id="connectBtn" onclick="toggleConnection()">Connect</button>
-            <button onclick="clearChat()">Clear</button>
-            <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+            <div id="status" class="status disconnected">
+                Disconnected
+            </div>
+            <div class="control-buttons">
+                <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+                <button onclick="clearChat()">Clear</button>
+                <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+            </div>
         </div>
         
         <div class="stats" id="stats">
@@ -286,12 +413,20 @@
     </div>
 
     <script>
+        // Configuration
+        const NUM_USERS = 3; // Maximum number of user columns to create
+        const MAX_ENTRIES_PER_COLUMN = 100; // Keep only last N entries per column
+        
         let ws = null;
         let isConnected = false;
         let totalReceived = 0;
         let lastCount = 0;
-        let maxEntries = 200; // Keep only last 200 entries to prevent memory issues
         let autoScroll = true;
+        
+        // User management
+        let userList = [];
+        let userToColumnMap = {};
+        let columnElements = {};
         
         const statusEl = document.getElementById('status');
         const chatContainerEl = document.getElementById('chatContainer');
@@ -300,6 +435,91 @@
         const currentIndexEl = document.getElementById('currentIndex');
         const totalMessagesEl = document.getElementById('totalMessages');
         const messageRateEl = document.getElementById('messageRate');
+        
+        function initializeColumns() {
+            chatContainerEl.innerHTML = '';
+            userList = [];
+            userToColumnMap = {};
+            columnElements = {};
+            
+            // Create thinking columns first (top row)
+            for (let i = 0; i < NUM_USERS; i++) {
+                const thinkingColumn = document.createElement('div');
+                thinkingColumn.className = 'user-column';
+                thinkingColumn.id = `user-column-${i}-thinking`;
+                
+                const thinkingHeader = document.createElement('div');
+                thinkingHeader.className = `user-column-header column-header-${i}`;
+                thinkingHeader.textContent = `User ${i + 1}`;
+                thinkingHeader.id = `column-header-${i}-thinking`;
+                
+                const thinkingMessages = document.createElement('div');
+                thinkingMessages.className = 'user-column-messages';
+                thinkingMessages.id = `column-messages-${i}-thinking`;
+                
+                thinkingColumn.appendChild(thinkingHeader);
+                thinkingColumn.appendChild(thinkingMessages);
+                chatContainerEl.appendChild(thinkingColumn);
+                
+                if (!columnElements[i]) {
+                    columnElements[i] = {};
+                }
+                columnElements[i].thinkingColumn = thinkingColumn;
+                columnElements[i].thinkingHeader = thinkingHeader;
+                columnElements[i].thinkingMessages = thinkingMessages;
+            }
+            
+            // Create function columns second (bottom row)
+            for (let i = 0; i < NUM_USERS; i++) {
+                const functionColumn = document.createElement('div');
+                functionColumn.className = 'user-column';
+                functionColumn.id = `user-column-${i}-function`;
+                
+                const functionHeader = document.createElement('div');
+                functionHeader.className = `user-column-header column-header-${i}`;
+                functionHeader.textContent = ``;
+                functionHeader.id = `column-header-${i}-function`;
+                
+                const functionMessages = document.createElement('div');
+                functionMessages.className = 'user-column-messages';
+                functionMessages.id = `column-messages-${i}-function`;
+                
+                functionColumn.appendChild(functionHeader);
+                functionColumn.appendChild(functionMessages);
+                chatContainerEl.appendChild(functionColumn);
+                
+                columnElements[i].functionColumn = functionColumn;
+                columnElements[i].functionHeader = functionHeader;
+                columnElements[i].functionMessages = functionMessages;
+            }
+        }
+        
+        function assignUserToColumn(username) {
+            if (username === 'system') {
+                return 'system';
+            }
+            
+            if (userToColumnMap[username] !== undefined) {
+                return userToColumnMap[username];
+            }
+            
+            const columnIndex = userList.length;
+            if (columnIndex < NUM_USERS) {
+                userList.push(username);
+                userToColumnMap[username] = columnIndex;
+                
+                // Update column headers
+                const thinkingHeader = columnElements[columnIndex].thinkingHeader;
+                const functionHeader = columnElements[columnIndex].functionHeader;
+                thinkingHeader.textContent = `${username}`;
+                functionHeader.textContent = ``;
+                
+                return columnIndex;
+            }
+            
+            // If we have more users than columns, assign to last column
+            return NUM_USERS - 1;
+        }
         
         function connect() {
             try {
@@ -365,8 +585,32 @@
         }
         
         function displayMessage(message) {
+            const username = message.user || 'Unknown';
+            const columnIndex = assignUserToColumn(username);
+            
+            // Handle system messages - show in all thinking columns
+            if (columnIndex === 'system') {
+                for (let i = 0; i < NUM_USERS; i++) {
+                    addMessageToColumn(message, i, 'thinking', true);
+                }
+                return;
+            }
+            
+            // Determine which column type based on message content
+            const parsed = message.parsed_content || {};
+            const columnType = (parsed.type === 'thinking') ? 'thinking' : 'function';
+            
+            // Add message to the appropriate column
+            addMessageToColumn(message, columnIndex, columnType, false);
+        }
+        
+        function addMessageToColumn(message, columnIndex, columnType, isSystem) {
+            const columnMessages = columnType === 'thinking' ? 
+                columnElements[columnIndex].thinkingMessages : 
+                columnElements[columnIndex].functionMessages;
+            
             const entry = document.createElement('div');
-            const userClass = message.user ? `user-${message.user}` : 'user-default';
+            const userClass = isSystem ? 'user-system' : `user-${columnIndex}`;
             entry.className = `message-entry ${userClass}`;
             
             // Format timestamp
@@ -374,13 +618,10 @@
                 new Date(message.timestamp).toLocaleTimeString() : 
                 new Date().toLocaleTimeString();
             
-            // Create message header
+            // Create message header (simpler for columns)
             const header = document.createElement('div');
             header.className = 'message-header';
-            header.innerHTML = `
-                <span>${message.user || 'Unknown'}</span>
-                <span class="timestamp">[${timestamp}]</span>
-            `;
+            header.innerHTML = `<span class="timestamp">[${timestamp}]</span>`;
             
             // Create message content using parsed data
             const content = document.createElement('div');
@@ -435,17 +676,17 @@
             entry.appendChild(header);
             entry.appendChild(content);
             
-            // Add to bottom of chat (chronological order)
-            chatContainerEl.appendChild(entry);
+            // Add to bottom of column (chronological order)
+            columnMessages.appendChild(entry);
             
-            // Remove old entries if we have too many
-            while (chatContainerEl.children.length > maxEntries) {
-                chatContainerEl.removeChild(chatContainerEl.firstChild);
+            // Remove old entries if we have too many in this column
+            while (columnMessages.children.length > MAX_ENTRIES_PER_COLUMN) {
+                columnMessages.removeChild(columnMessages.firstChild);
             }
             
             // Auto-scroll to bottom if enabled
             if (autoScroll) {
-                chatContainerEl.scrollTop = chatContainerEl.scrollHeight;
+                columnMessages.scrollTop = columnMessages.scrollHeight;
             }
         }
         
@@ -456,10 +697,23 @@
         }
         
         function clearChat() {
-            chatContainerEl.innerHTML = '';
+            for (let i = 0; i < NUM_USERS; i++) {
+                const thinkingMessages = columnElements[i].thinkingMessages;
+                const functionMessages = columnElements[i].functionMessages;
+                thinkingMessages.innerHTML = '';
+                functionMessages.innerHTML = '';
+            }
             totalReceived = 0;
             totalCountEl.textContent = '0';
             currentIndexEl.textContent = '0';
+            
+            // Reset user assignments but keep columns
+            userList = [];
+            userToColumnMap = {};
+            for (let i = 0; i < NUM_USERS; i++) {
+                columnElements[i].thinkingHeader.textContent = `User ${i + 1}`;
+                columnElements[i].functionHeader.textContent = ``;
+            }
         }
         
         function toggleAutoScroll() {
@@ -475,22 +729,39 @@
             messageRateEl.textContent = rate;
         }, 1000);
         
-        // Auto-connect on page load
+        // Initialize columns and auto-connect on page load
         window.addEventListener('load', () => {
+            initializeColumns();
             // Give a moment for the page to render before connecting
             setTimeout(connect, 500);
         });
         
-        // Handle manual scrolling - disable auto-scroll if user scrolls up
-        chatContainerEl.addEventListener('scroll', () => {
-            const isAtBottom = chatContainerEl.scrollTop + chatContainerEl.clientHeight >= 
-                              chatContainerEl.scrollHeight - 10;
-            
-            if (!isAtBottom && autoScroll) {
-                // User scrolled up, but don't change the button state
-                // Just temporarily disable auto-scroll behavior
+        // Handle manual scrolling - each column handles its own scrolling
+        function setupColumnScrollHandlers() {
+            for (let i = 0; i < NUM_USERS; i++) {
+                const thinkingMessages = columnElements[i].thinkingMessages;
+                const functionMessages = columnElements[i].functionMessages;
+                
+                [thinkingMessages, functionMessages].forEach(columnMessages => {
+                    columnMessages.addEventListener('scroll', () => {
+                        const isAtBottom = columnMessages.scrollTop + columnMessages.clientHeight >= 
+                                          columnMessages.scrollHeight - 10;
+                        
+                        if (!isAtBottom && autoScroll) {
+                            // User scrolled up in this column, but don't change global auto-scroll state
+                            // Individual columns will handle their own scrolling
+                        }
+                    });
+                });
             }
-        });
+        }
+        
+        // Call this after columns are initialized
+        setTimeout(() => {
+            if (columnElements[0]) {
+                setupColumnScrollHandlers();
+            }
+        }, 1000);
     </script>
 </body>
 </html>
