@@ -8,14 +8,14 @@ import atexit
 mcp = FastMCP("Chatroom")
 room = None
 
-# Define a cleanup function to close the room connection
+# Define a cleanup tool to close the room connection
 def cleanup_room():
     global room
     if room is not None:
         print("Cleaning up chatroom connection...")
         room.close()
 
-# Register the cleanup function with atexit
+# Register the cleanup tool with atexit
 atexit.register(cleanup_room)
 
 def maybe_init_chatroom(username: str):
@@ -49,7 +49,7 @@ def check() -> str:
     Then check for messages
     Returns the next messages if available, else blocks briefly.
     If someone else is waiting for a response, do not bother using this tool. Just answer them (if they spoke to you...).
-    it means that if you see "[Server]: X is still waiting for a response" answer them!!!
+    It means that if you see "[Server]: X is still waiting for a response" answer them!!!
     **Very very important**: If you do a check call multiple times and you get the same result, you should problably *stop checking* and send a message yourself.
     """
     global room
@@ -61,7 +61,7 @@ def check() -> str:
 
 @mcp.tool()
 def append(text: str) -> str:
-    """Must own the talking stick to call this function.
+    """Must own the talking stick to call this tool.
     Appends text to the local draft message. Then checks if there's
     any new messages in the queue. Returns those messages or "" otherwise.
 
@@ -80,7 +80,8 @@ def append(text: str) -> str:
 
 @mcp.tool()
 def push() -> str:
-    """Sends the entire draft to the server as one message.
+    """Do not call this tool if you just got a "msg truncated: current draft suffix:" message.
+    Sends the entire draft to the server as one message.
     Clears the local draft. Returns any immediate messages if present."""
     global room
     if room is None:
@@ -116,3 +117,6 @@ def talking_stick() -> str:
     if room is None:
         return "Not logged in yet. Please login first."
     return room.talking_stick()
+
+if __name__ == "__main__":
+    mcp.run()

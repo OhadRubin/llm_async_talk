@@ -293,12 +293,12 @@ class AsyncChatRoom:
             # Slightly longer delay between checks
             # Call the check event endpoint
             if not first_time:
-                resp = requests.post(
+                requests.post(
                     f"{self.base_url}/check_event",
                     json={"username": self.username, "delay": delay},
                     timeout=5,
                 )
-            resp.raise_for_status()
+                
 
             time.sleep(delay)
             delay = 2 * delay
