@@ -336,21 +336,7 @@
             border: 1px solid #f0f0f0;
         }
         
-        /* Sender-based colors for messages from other users */
-        .from-micheal {
-            border-left: 4px solid #27ae60 !important;
-            border-color: #27ae60;
-        }
-        
-        .from-jim {
-            border-left: 4px solid #3498db !important;
-            border-color: #3498db;
-        }
-        
-        .from-dwight {
-            border-left: 4px solid #f39c12 !important;
-            border-color: #f39c12;
-        }
+        /* Dynamic sender colors will be applied via JavaScript */
         
         .parsed-empty {
             color: #7f8c8d;
@@ -363,15 +349,6 @@
             border: 1px solid #f0f0f0;
         }
         
-        .message-from-header {
-            font-size: 9px;
-            color: #666;
-            margin-bottom: 3px;
-            font-weight: bold;
-            opacity: 0.7;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
         
         @keyframes fadeIn {
             from {
@@ -534,7 +511,18 @@
         // User management
         let userList = [];
         let userToColumnMap = {};
+        let userColorMap = {}; // Map username to color
         let columnElements = {};
+        
+        // Available colors for user assignment
+        const USER_COLORS = [
+            '#27ae60', // Green
+            '#3498db', // Blue  
+            '#f39c12', // Orange
+            '#9b59b6', // Purple
+            '#2ecc71', // Light green
+            '#e67e22'  // Dark orange
+        ];
         
         const statusEl = document.getElementById('status');
         const chatContainerEl = document.getElementById('chatContainer');
@@ -630,6 +618,12 @@
         function assignUserToColumn(username) {
             if (username === 'system') {
                 return 'system';
+            }
+            
+            // Assign color if user doesn't have one
+            if (userColorMap[username] === undefined) {
+                const colorIndex = Object.keys(userColorMap).length % USER_COLORS.length;
+                userColorMap[username] = USER_COLORS[colorIndex];
             }
             
             if (userToColumnMap[username] !== undefined) {
@@ -810,12 +804,9 @@
             
             // No header needed - removed timestamp
             
-            // Add "from" header for function column (middle row)
-            let headerHTML = '';
-            if (columnType === 'function') {
-                const fromUser = message.from || parsed.from || parsed.user || 'Unknown';
-                headerHTML = `<div class="message-from-header">from: ${escapeHtml(fromUser)}</div>`;
-            }
+            // Get sender info for function column messages
+            const fromUser = (columnType === 'function') ? (message.from || parsed.from || parsed.user || 'Unknown') : null;
+            const fromUserColor = fromUser ? (userColorMap[fromUser] || '#666') : null;
             
             // Create message content using parsed data
             const content = document.createElement('div');
@@ -847,23 +838,38 @@
 
 
                 case 'chat':
-                    // Check if message has a 'from' field to apply sender color
-                    const fromUser = message.from || parsed.from;
-                    let chatClass = 'parsed-chat';
-                    if (fromUser) {
-                        const senderClass = `from-${fromUser.toLowerCase()}`;
-                        chatClass += ` ${senderClass}`;
+                    // Apply sender color dynamically and add sender prefix for function column
+                    const chatFromUser = message.from || parsed.from;
+                    let chatStyle = '';
+                    let chatContent = parsed.content || '';
+                    
+                    if (chatFromUser && userColorMap[chatFromUser]) {
+                        chatStyle = `style="border-left: 4px solid ${userColorMap[chatFromUser]};"`;
                     }
-                    contentHTML=`<div class="${chatClass}">${escapeHtml(parsed.content||'')}</div>`;
+                    
+                    // Add sender prefix for function column messages
+                    if (fromUser && columnType === 'function') {
+                        chatContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${escapeHtml(chatContent)}`;
+                    } else {
+                        chatContent = escapeHtml(chatContent);
+                    }
+                    
+                    contentHTML=`<div class="parsed-chat" ${chatStyle}>${chatContent}</div>`;
                     break;
 
                 default:
                     // Fallback to parsed content
-                    contentHTML=`<div class="parsed-chat">${escapeHtml(parsed.content||'No content')}</div>`;
+                    let defaultContent = parsed.content || 'No content';
+                    if (fromUser && columnType === 'function') {
+                        defaultContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${escapeHtml(defaultContent)}`;
+                    } else {
+                        defaultContent = escapeHtml(defaultContent);
+                    }
+                    contentHTML=`<div class="parsed-chat">${defaultContent}</div>`;
                     break;
             }
             
-            content.innerHTML = headerHTML + contentHTML;
+            content.innerHTML = contentHTML;
             
             entry.appendChild(content);
             
@@ -979,6 +985,7 @@
             // Reset user assignments but keep columns
             userList = [];
             userToColumnMap = {};
+            userColorMap = {};
             for (let i = 0; i < NUM_USERS; i++) {
                 columnElements[i].thinkingHeader.textContent = `User ${i + 1}`;
                 columnElements[i].functionHeader.textContent = ``;
