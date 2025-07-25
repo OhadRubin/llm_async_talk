@@ -23,34 +23,147 @@ import argparse
 LOG_FILE = "/Users/ohadr/llm_async_talk/logs/chat_session_20250723_115830.log"
 PORT = 8080
 
+def parse_message_content(raw_content):
+    raw_content = raw_content.replace("[system] ", "[Server]: ")
+    """Parse and categorize message content"""
+    import re
+
+    if not raw_content:
+        return None
+    try:
+        username, content = raw_content.strip().split(" | ", 1)
+    except ValueError:
+        return None
+
+    # Check for bot thinking
+    thinking_match = re.search(r'<bot_thinking>(.*?)</bot_thinking>', content, re.DOTALL)
+    if thinking_match:
+        return {
+            "type": "thinking",
+            "content": thinking_match.group(1).strip(),
+            "user": username,
+        }
+
+    # Check for tool calls
+    tool_call_match = re.search(r'<tool_call>(.*?)</tool_call>', content, re.DOTALL)
+    if tool_call_match:
+        tool_data = json.loads(tool_call_match.group(1))
+        try:
+            ftype = tool_data.get("function", {}).get("name", "unknown")
+            res = {
+                "type": "tool_call",
+                "function": ftype,
+                # 'content': tool_call_match.group(1).strip(),
+                "user": username,
+            }
+            if ftype == "append":
+                res["arguments"] = json.loads(
+                    tool_data.get("function", {}).get("arguments", "")
+                )["text"]
+            return res
+        except json.JSONDecodeError:
+            return None
+
+    # Check for tool responses
+    tool_response_match = re.search(r'<tool_response>(.*?)</tool_response>', content, re.DOTALL)
+    if not tool_response_match:
+        # Also check for tool_response without closing tag (in case it's truncated)
+        tool_response_match = re.search(r"<tool_response>(.*)", content, re.DOTALL)
+
+    if not tool_response_match:
+        tool_response_match = re.search(r"(.*)</tool_response>", content, re.DOTALL)
+
+    if tool_response_match:
+        content = tool_response_match.group(1).strip()
+    from_match = re.search(r"\[(.*)\]: (.*)", content)
+    if from_match:
+        from_user = from_match.group(1).strip()
+        content = from_match.group(2).strip()
+    else:
+        from_user = None
+    if not content:
+        return None
+    result = {
+        "type": "chat",
+        "content": content,
+        "user": username,
+    }
+    if from_user:
+        result["from"] = from_user
+    return result
+
 class ChatLogServer:
-    def __init__(self, log_file_path, port=PORT, slowdown=1.1):
-        self.log_file_path = Path(log_file_path)
+    def __init__(self, message_iterator, port=PORT, slowdown=1.1):
+        self.message_iterator = message_iterator
         self.port = port
         self.slowdown = slowdown
         self.clients = set()
-        self.messages = []
-        self.current_index = 0
         self.broadcast_task = None
 
+
     async def load_messages(self):
-        """Load all messages from the log file"""
-        if not self.log_file_path.exists():
-            print(f"Error: Log file {self.log_file_path} not found")
-            return
+        """Messages are loaded dynamically from the infinite iterator during broadcasting"""
+        print("Using infinite iterator - messages will be loaded during broadcasting")
 
-        with open(self.log_file_path, 'r', encoding='utf-8') as f:
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if not line:
-                    continue
+
+    async def start_broadcasting(self):
+        """Start broadcasting messages from the infinite iterator with original timing"""
+        from datetime import datetime
+
+        previous_message = None
+
+        for message in self.message_iterator:
+            raw_content = message.get('content', '')
+
+            parsed_content = parse_message_content(raw_content)
+            if not parsed_content or (
+                parsed_content["type"] == "tool_response"
+                and not parsed_content["content"]
+                and not parsed_content.get("arguments", None)
+            ):
+                previous_message = message
+                continue
+
+            # Add streaming metadata
+            broadcast_data = {
+                "type": "chat_message",
+                "timestamp": message.get("timestamp"),
+                "parsed_content": parsed_content,
+                "stream_time": time.time(),
+            }
+            if parsed_content.get("from"):
+                broadcast_data["from"] = parsed_content["from"]
+
+            await self.broadcast_message(broadcast_data)
+            print(broadcast_data)
+
+            # Calculate delay until next message based on previous timestamp
+            if previous_message:
                 try:
-                    message = json.loads(line)
-                    self.messages.append(message)
-                except json.JSONDecodeError as e:
-                    print(f"Warning: Could not parse line {line_num}: {e}")
+                    previous_ts = previous_message.get('timestamp')
+                    current_ts = message.get('timestamp')
 
-        print(f"Loaded {len(self.messages)} messages from log file")
+                    if previous_ts and current_ts:
+                        # Parse timestamps (ISO format)
+                        previous_time = datetime.fromisoformat(previous_ts.replace('Z', '+00:00'))
+                        current_time = datetime.fromisoformat(current_ts.replace('Z', '+00:00'))
+
+                        # Calculate actual time difference
+                        time_diff = (current_time - previous_time).total_seconds()
+
+                        # Apply slowdown factor and cap the delay at 10 seconds max for very long pauses
+                        delay = min(max(time_diff * self.slowdown, 0.1), 10.0)
+                    else:
+                        delay = 0.5 * self.slowdown  # Default delay if timestamps are missing
+                except Exception as e:
+                    print(f"Error calculating delay: {e}")
+                    delay = 0.5 * self.slowdown  # Default delay on error
+            else:
+                delay = 0.5 * self.slowdown  # Default delay for first message
+
+            previous_message = message
+            await asyncio.sleep(delay)
+
 
     async def register_client(self, websocket):
         """Register a new client"""
@@ -60,8 +173,7 @@ class ChatLogServer:
         # Send welcome message
         welcome_msg = {
             'type': 'welcome',
-            'message': 'Connected to Chat Log Server',
-            'total_messages': len(self.messages)
+            'message': 'Connected to Chat Log Server'
         }
         await websocket.send(json.dumps(welcome_msg))
 
@@ -87,165 +199,9 @@ class ChatLogServer:
         for client in disconnected:
             self.clients.discard(client)
 
-    def parse_message_content(self, raw_content):
-        """Parse and categorize message content"""
-        import re
 
-        if not raw_content:
-            return None
-        try:
-            username, content = raw_content.strip().split(" | ", 1)
-        except ValueError:
-            return None
 
-        # Check for bot thinking
-        thinking_match = re.search(r'<bot_thinking>(.*?)</bot_thinking>', content, re.DOTALL)
-        if thinking_match:
-            return {
-                "type": "thinking",
-                "content": thinking_match.group(1).strip(),
-                "user": username,
-            }
 
-        # Check for tool calls
-        tool_call_match = re.search(r'<tool_call>(.*?)</tool_call>', content, re.DOTALL)
-        if tool_call_match:
-            tool_data = json.loads(tool_call_match.group(1))
-            try:
-                ftype = tool_data.get("function", {}).get("name", "unknown")
-                res = {
-                    "type": "tool_call",
-                    "function": ftype,
-                    # 'content': tool_call_match.group(1).strip(),
-                    "user": username,
-                }
-                if ftype == "append":
-                    res["arguments"] = json.loads(
-                        tool_data.get("function", {}).get("arguments", "")
-                    )["text"]
-                return res
-            except json.JSONDecodeError:
-                return None
-
-        # Check for tool responses
-        tool_response_match = re.search(r'<tool_response>(.*?)</tool_response>', content, re.DOTALL)
-        if not tool_response_match:
-            # Also check for tool_response without closing tag (in case it's truncated)
-            tool_response_match = re.search(r"<tool_response>(.*)", content, re.DOTALL)
-
-        if not tool_response_match:
-            tool_response_match = re.search(r"(.*)</tool_response>", content, re.DOTALL)
-
-        if tool_response_match:
-            content = tool_response_match.group(1).strip()
-        from_match = re.search(r"\[(.*)\]: (.*)", content)
-        if from_match:
-            from_user = from_match.group(1).strip()
-            content = from_match.group(2).strip()
-        else:
-            from_user = None
-        if not content:
-            return None
-        result = {
-            "type": "chat",
-            "content": content,
-            "user": username,
-        }
-        if from_user:
-            result["from"] = from_user
-        return result
-
-        # Check for user prefix (like "Micheal | You:")
-        # user_prefix_match = re.match(r'^(\w+)\s*\|\s*(.+)', content)
-        # if user_prefix_match:
-        #     return {
-        #         "type": "chat",
-        #         "content": user_prefix_match.group(2).strip(),
-        #         "user": username,
-        #     }
-
-        # # Regular chat message
-        # if not content:
-        #     return None
-        # return {"type": "chat", "content": content, "user": username}
-
-    async def start_broadcasting(self):
-        """Start broadcasting messages from the log file with original timing"""
-        from datetime import datetime
-
-        self.current_index = 0
-
-        while True:
-            if self.current_index >= len(self.messages):
-                # Restart from beginning when we reach the end
-                self.current_index = 0
-                await asyncio.sleep(3)  # Pause before restarting
-                continue
-
-            message = self.messages[self.current_index]
-            raw_content = message.get('content', '')
-
-            parsed_content = self.parse_message_content(
-                raw_content.replace("[system] ", "[Server]: ")
-            )
-            if not parsed_content or (
-                parsed_content["type"] == "tool_response"
-                and not parsed_content["content"]
-                and not parsed_content.get("arguments", None)
-            ):
-                self.current_index = self.current_index + 1
-                continue
-
-            # Add streaming metadata
-            broadcast_data = {
-                "type": "chat_message",
-                "index": self.current_index,
-                "total": len(self.messages),
-                "timestamp": message.get("timestamp"),
-                # 'user': message.get('user'),
-                # 'content': raw_content,
-                "parsed_content": parsed_content,
-                # 'message_type': message.get('type'),
-                # 'metadata': message.get('metadata'),
-                "stream_time": time.time(),
-            }
-            if parsed_content.get("from"):
-                broadcast_data["from"] = parsed_content["from"]
-
-            await self.broadcast_message(broadcast_data)
-            # if "[system]" in json.dumps(broadcast_data):
-            print(broadcast_data)
-            # if
-            # self.current_index = self.current_index +1
-
-            # continue
-
-            # Calculate delay until next message based on original timestamps
-            if self.current_index + 1 < len(self.messages):
-                try:
-                    current_ts = message.get('timestamp')
-                    next_ts = self.messages[self.current_index + 1].get('timestamp')
-
-                    if current_ts and next_ts:
-                        # Parse timestamps (ISO format)
-                        current_time = datetime.fromisoformat(current_ts.replace('Z', '+00:00'))
-                        next_time = datetime.fromisoformat(next_ts.replace('Z', '+00:00'))
-
-                        # Calculate actual time difference
-                        time_diff = (next_time - current_time).total_seconds()
-
-                        # Apply slowdown factor and cap the delay at 10 seconds max for very long pauses
-                        delay = min(max(time_diff * self.slowdown, 0.1), 10.0)
-                    else:
-                        delay = 0.5 * self.slowdown  # Default delay if timestamps are missing
-                except Exception as e:
-                    print(f"Error calculating delay: {e}")
-                    delay = 0.5 * self.slowdown  # Default delay on error
-            else:
-                delay = 0.5 * self.slowdown  # Default delay for last message
-
-            self.current_index += 1
-            await asyncio.sleep(delay)
 
     async def handle_client(self, websocket):
         """Handle individual client connections"""
@@ -270,10 +226,6 @@ class ChatLogServer:
         """Start the WebSocket server"""
         # Load messages from log file
         await self.load_messages()
-
-        if not self.messages:
-            print("No messages found in log file. Exiting.")
-            return
 
         print(f"Chat Log WebSocket Server starting on ws://localhost:{self.port}")
 
@@ -329,12 +281,45 @@ def parse_args():
     )
     return parser.parse_args()
 
+def create_message_iterator(log_file_path):
+    """Create an infinite iterator from the log file"""
+    log_file_path = Path(log_file_path)
+    
+    def message_generator():
+        while True:
+            if not log_file_path.exists():
+                print(f"Warning: Log file {log_file_path} not found, waiting...")
+                time.sleep(1)
+                continue
+                
+            try:
+                with open(log_file_path, 'r', encoding='utf-8') as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            message = json.loads(line)
+                            yield message
+                        except json.JSONDecodeError as e:
+                            print(f"Warning: Could not parse line {line_num}: {e}")
+                            continue
+                # When we reach EOF, restart from beginning
+                print("Reached end of log file, restarting from beginning...")
+                time.sleep(3)  # Brief pause before restarting
+            except Exception as e:
+                print(f"Error reading log file: {e}")
+                time.sleep(1)
+    
+    return message_generator()
+
 async def main():
     global server
     args = parse_args()
     
     print(f"Starting Chat Log Server with slowdown factor: {args.slowdown}x")
-    server = ChatLogServer(args.log_file, args.port, args.slowdown)
+    message_iterator = create_message_iterator(args.log_file)
+    server = ChatLogServer(message_iterator, args.port, args.slowdown)
     
     # Set up signal handlers
     signal.signal(signal.SIGINT, signal_handler)

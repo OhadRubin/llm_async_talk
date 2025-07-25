@@ -36,11 +36,21 @@ def create_agent1_slides():
     tf.paragraphs[0].font.size = Pt(20)
     
     p = tf.add_paragraph()
-    p.text = "Visual: Three LLMs (labeled Claude, GPT, Gemini) all generating text simultaneously"
+    p.text = "[ANIMATION: 3-Phase Visual Story]"
+    p.level = 1
+    p.font.italic = True
+    p.font.color.rgb = RGBColor(128, 128, 128)
+    
+    p = tf.add_paragraph()
+    p.text = "Phase 1: Three LLMs ready and initialized"
     p.level = 1
     
     p = tf.add_paragraph()
-    p.text = "Result: Overlapping, incoherent output - word soup"
+    p.text = "Phase 2: All start generating simultaneously" 
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "Phase 3: Text streams collide → Garbled output"
     p.level = 1
     
     p = tf.add_paragraph()
@@ -50,7 +60,7 @@ def create_agent1_slides():
     p.font.size = Pt(18)
     
     p = tf.add_paragraph()
-    p.text = "Each LLM, once started, must complete its entire response"
+    p.text = "Each LLM must complete its entire response before processing new input"
     p.level = 1
     
     p = tf.add_paragraph()
@@ -60,7 +70,7 @@ def create_agent1_slides():
     # Add speaker notes
     notes_slide = slide.notes_slide
     notes_text_frame = notes_slide.notes_text_frame
-    notes_text_frame.text = "Uncoordinated LLMs break down. Here's what happens when three LLMs try to talk without coordination. It's word soup. If we can't coordinate them, ensemble reasoning fails - multiple models can't vote, debate can't improve accuracy, and simulation breaks down. Unlike humans who can interrupt and adjust, each LLM, once started, must complete its entire response. They're architecturally incapable of listening while speaking. Sound familiar? Let's dig into why."
+    notes_text_frame.text = "Uncoordinated LLMs break down. [SHOW 3-PHASE ANIMATION] Phase 1: Three LLMs - Claude, GPT-4, and Gemini - are initialized and ready, like processes waiting for a critical section. Phase 2: Without coordination, they all start generating text simultaneously - multiple processes entering the critical section at once. Phase 3: Their text streams collide and create garbled output - this is our race condition resulting in corrupted shared state. If we can't coordinate them, ensemble reasoning fails - multiple models can't vote, debate can't improve accuracy, and simulation breaks down. Unlike humans who can interrupt and adjust, each LLM, once started, must complete its entire response. The visual shows this as a classic coordination problem - like network packet collisions or database transaction conflicts."
     
     # Slide 3: Agenda
     slide = prs.slides.add_slide(bullet_slide_layout)
@@ -208,9 +218,13 @@ def create_agent1_slides():
     title = slide.shapes.title
     body = slide.placeholders[1]
     
-    title.text = "LLM Architecture Primer"
+    title.text = "LLM Architecture: Two Distinct Phases"
     tf = body.text_frame
     tf.text = "Input: \"What is the capital of France?\""
+    
+    p = tf.add_paragraph()
+    p.text = "         ↓"
+    p.level = 1
     
     p = tf.add_paragraph()
     p.text = "┌─────────────────┐"
@@ -225,11 +239,15 @@ def create_agent1_slides():
     p.level = 1
     
     p = tf.add_paragraph()
-    p.text = "│  Cache for all  │ Bottleneck: FLOPS"
+    p.text = "│  Cache for all  │ Bottleneck: FLOPS - can be parallelized"
     p.level = 1
     
     p = tf.add_paragraph()
     p.text = "└─────────────────┘"
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "         ↓"
     p.level = 1
     
     p = tf.add_paragraph()
@@ -249,12 +267,13 @@ def create_agent1_slides():
     p.level = 1
     
     p = tf.add_paragraph()
-    p.text = "│  is... →        │"
+    p.text = "│  is... →        │ Each token depends on ALL previous tokens"
     p.level = 1
     
     p = tf.add_paragraph()
-    p.text = "│  Paris.         │"
+    p.text = "│  Paris.         │ ❌ CANNOT BE INTERRUPTED"
     p.level = 1
+    p.font.bold = True
     
     p = tf.add_paragraph()
     p.text = "└─────────────────┘"
@@ -263,7 +282,7 @@ def create_agent1_slides():
     # Add speaker notes
     notes_slide = slide.notes_slide
     notes_text_frame = notes_slide.notes_text_frame
-    notes_text_frame.text = "So far we saw the biological analogy for single-channel constraints; now let's see the technical details of how LLMs actually work. LLMs have two distinct phases. Prefill processes your entire prompt in parallel - it's compute-bound, doing massive matrix multiplications. Generate produces one token at a time, each depending on all previous tokens - it's memory-bound, constantly loading cached attention values. Here's the critical constraint: once generation starts, the model cannot process new input until it's done. It's architecturally serial."
+    notes_text_frame.text = "So far we saw the biological analogy for single-channel constraints; now let's see the technical details of how LLMs actually work. LLMs have two distinct phases. Prefill processes your entire prompt in parallel - it's compute-bound, doing massive matrix multiplications. Generate produces one token at a time, each depending on all previous tokens - it's memory-bound, constantly loading cached attention values. Here's the critical constraint: once generation starts, the model cannot process new input until it's done. It's architecturally serial. This is crucial for distributed systems researchers to understand: LLMs are fundamentally different from traditional processes. In prefill, they process your entire prompt in parallel - like a massive matrix multiplication computing attention weights for all input tokens simultaneously. But generation is inherently sequential. Each new token depends on the attention-weighted combination of ALL previous tokens. This isn't a software choice - it's baked into the transformer mathematics. You cannot interrupt generation mid-stream because the attention mechanism requires the complete sequence. This breaks traditional distributed systems assumptions about interruptible processes."
     
     # Slide 8: The Sequential Bottleneck
     slide = prs.slides.add_slide(bullet_slide_layout)
@@ -289,11 +308,35 @@ def create_agent1_slides():
     p = tf.add_paragraph()
     p.text = "                   ❌ Cannot process until generation completes"
     p.level = 1
+    p.font.bold = True
+    
+    p = tf.add_paragraph()
+    p.text = "Why this breaks distributed systems assumptions:"
+    p.level = 0
+    p.font.bold = True
+    
+    p = tf.add_paragraph()
+    p.text = "• Traditional processes: Can be interrupted at any instruction"
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "• Traditional processes: Can receive signals mid-execution"
+    p.level = 1
+    
+    p = tf.add_paragraph()
+    p.text = "• LLMs: Each token = f(ALL previous tokens) via attention"
+    p.level = 1
+    p.font.bold = True
+    
+    p = tf.add_paragraph()
+    p.text = "• LLMs: Mathematical dependency chain cannot be broken"
+    p.level = 1
+    p.font.bold = True
     
     # Add speaker notes
     notes_slide = slide.notes_slide
     notes_text_frame = notes_slide.notes_text_frame
-    notes_text_frame.text = "This is our core challenge. Once an LLM starts generating, it's like a printer from 1995 - you can't add pages to the queue until the current job finishes. Every token depends on all previous tokens through the attention mechanism. There's no architectural way to inject new information mid-stream. It's not a software limitation - it's baked into the transformer mathematics."
+    notes_text_frame.text = "This is our core challenge and the key insight for distributed systems researchers. Once an LLM starts generating, it's like a printer from 1995 - you can't add pages to the queue until the current job finishes. Every token depends on all previous tokens through the attention mechanism. There's no architectural way to inject new information mid-stream. This isn't a software limitation or design choice - it's baked into the transformer mathematics. Traditional distributed systems assume processes can be interrupted, can receive signals, can checkpoint state. LLMs violate all these assumptions during generation."
     
     # Slide 9: The Staleness Problem (Moved here for constraint → symptom → motivation flow)
     slide = prs.slides.add_slide(bullet_slide_layout)
@@ -1056,6 +1099,67 @@ Events:     └─Intro─┘└Race┘└─Topics─┘└Philosophy┘"""
             p.font.italic = True
         else:
             p.font.size = Pt(14)
+    
+    # Slide B4: Transformer Architecture Details (For Technical Deep-Dive)
+    slide = prs.slides.add_slide(slide_layout)
+    
+    # Title
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(1))
+    title_frame = title_box.text_frame
+    title_frame.text = "Backup Slide B4: Transformer Attention Mechanism"
+    title_para = title_frame.paragraphs[0]
+    title_para.font.size = Pt(28)
+    title_para.font.bold = True
+    title_para.alignment = PP_ALIGN.CENTER
+    
+    # Technical content
+    content_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(9), Inches(5))
+    content_frame = content_box.text_frame
+    content_frame.text = "Mathematical Foundation of Sequential Constraint:"
+    content_frame.paragraphs[0].font.bold = True
+    content_frame.paragraphs[0].font.size = Pt(16)
+    
+    p = content_frame.add_paragraph()
+    p.text = ""
+    
+    p = content_frame.add_paragraph()
+    p.text = "For token at position i, attention output:"
+    p.font.size = Pt(14)
+    
+    p = content_frame.add_paragraph()
+    p.text = "Attention(Q_i, K_{1:i}, V_{1:i}) = softmax(Q_i * K_{1:i}^T / √d_k) * V_{1:i}"
+    p.font.name = 'Courier New'
+    p.font.size = Pt(12)
+    
+    p = content_frame.add_paragraph()
+    p.text = ""
+    
+    p = content_frame.add_paragraph()
+    p.text = "Key Constraints:"
+    p.font.bold = True
+    p.font.size = Pt(14)
+    
+    technical_points = [
+        "• Causal masking: Token i can only attend to positions 1..i",
+        "• Autoregressive: P(x_i | x_1, ..., x_{i-1}) computed sequentially",
+        "• KV cache grows: O(sequence_length × hidden_dim) memory",
+        "• Each forward pass requires ALL previous hidden states",
+        "• No mathematical way to parallelize across output positions"
+    ]
+    
+    for point in technical_points:
+        p = content_frame.add_paragraph()
+        p.text = point
+        p.font.size = Pt(12)
+    
+    p = content_frame.add_paragraph()
+    p.text = ""
+    
+    p = content_frame.add_paragraph()
+    p.text = "This is why LLMs cannot be interrupted mid-generation: breaking the causal chain invalidates all subsequent computations."
+    p.font.size = Pt(14)
+    p.font.bold = True
+    p.font.italic = True
     
     # Save the presentation
     filename = "slides.pptx"
