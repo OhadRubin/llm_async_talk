@@ -1,5 +1,8 @@
 import argparse
 import asyncio
+import websockets
+import time
+from pathlib import Path
 
 import sys
 from dataclasses import dataclass
@@ -22,6 +25,25 @@ from contextlib import redirect_stdout, contextmanager
 from typing import Callable, Any
 import functools
 import contextvars
+
+# Import WebSocket server functionality from chat_log_sender
+from chat_log_sender import ChatLogServer, parse_message_content
+
+# Global message queue for live WebSocket broadcasting
+live_message_queue = asyncio.Queue()
+
+def create_live_message_iterator():
+    """Create an async iterator that yields messages from the live queue."""
+    async def message_generator():
+        while True:
+            try:
+                message = await live_message_queue.get()
+                yield message
+            except Exception as e:
+                print(f"Error in live message iterator: {e}")
+                await asyncio.sleep(0.1)
+    
+    return message_generator()
 
 # Context variable to store the current prefix and color
 current_prefix = contextvars.ContextVar('current_prefix', default='')
@@ -64,14 +86,24 @@ class PrefixedOutput:
                 timestamp = datetime.datetime.now().isoformat()
                 prefix = current_prefix.get('')
                 
+                log_entry = {
+                    "timestamp": timestamp,
+                    "user": prefix,
+                    "content": text.rstrip('\n')  # Remove trailing newline but preserve internal ones
+                }
+                
+                # Write to log file
                 with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                    log_entry = {
-                        "timestamp": timestamp,
-                        "user": prefix,
-                        "content": text.rstrip('\n')  # Remove trailing newline but preserve internal ones
-                    }
                     f.write(json.dumps(log_entry) + '\n')
                     f.flush()
+                
+                # Also add to live WebSocket queue (non-blocking)
+                try:
+                    live_message_queue.put_nowait(log_entry)
+                except asyncio.QueueFull:
+                    # If queue is full, skip this message to avoid blocking
+                    pass
+                    
             except Exception as e:
                 # If logging fails, don't crash the program
                 pass
@@ -351,6 +383,12 @@ def main() -> None:
         help="Disable MCP servers",
         
     )
+    parser.add_argument(
+        "--websocket-port",
+        type=int,
+        default=8080,
+        help="WebSocket server port for live chat viewing (default: 8080)",
+    )
 
     args = parser.parse_args()
     args.enable_mcp = not args.disable_mcp
@@ -396,14 +434,36 @@ def main() -> None:
     user_configs = [json.load(open(f"{args.exp_dir}/{user}")) for user in os.listdir(args.exp_dir)]
     chat_sessions = [(create_run_chat_session(user["username"], user["interest"]), user["username"]) for user in user_configs]
     
+    # Create and start WebSocket server
+    message_iterator = create_live_message_iterator()
+    websocket_server = ChatLogServer(message_iterator, args.websocket_port)
+    
+    async def start_websocket_server():
+        """Start the WebSocket server for live chat viewing."""
+        try:
+            print(f"Starting WebSocket server on port {args.websocket_port}")
+            await websocket_server.start()
+        except Exception as e:
+            print(f"Failed to start WebSocket server: {e}")
+    
     if len(chat_sessions) == 1:
         session_func, username = chat_sessions[0]
-        asyncio.run(run_with_prefix(session_func, username, get_user_color(username), chat_config))
+        async def run_single_session():
+            # Start both WebSocket server and chat session
+            await asyncio.gather(
+                start_websocket_server(),
+                run_with_prefix(session_func, username, get_user_color(username), chat_config)
+            )
+        asyncio.run(run_single_session())
     else:
         async def run_all_sessions():
-            tasks = [run_with_prefix(session_func, username, get_user_color(username), chat_config) 
-                    for session_func, username in chat_sessions]
-            await asyncio.gather(*tasks)
+            chat_tasks = [run_with_prefix(session_func, username, get_user_color(username), chat_config) 
+                         for session_func, username in chat_sessions]
+            # Start WebSocket server alongside all chat sessions
+            await asyncio.gather(
+                start_websocket_server(),
+                *chat_tasks
+            )
         asyncio.run(run_all_sessions())
 
 
