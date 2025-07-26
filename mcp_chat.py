@@ -151,15 +151,26 @@ def create_run_chat_session(username, interest):
                 for name, srv_config in server_config["mcpServers"].items()
             ]
 
+        # system_prompt = f"""We are playing a game where we are talking in a chatroom, and one of the players is a murderer (kind of like the game "Mafia").
         system_prompt = f"""Let's login and start speaking with our friends in the chatroom, your username is {username}.
 You are interested in {interest}.
-Keep your messages concise. Send a message saying Hi.
-Just use the login tool.
+Keep your messages very very concise. Start by sending a message introducing yourself.
+To start, use the login tool. Pay special attention to the tool instructions.
 One of the people in the chat room is a murderer. Your goal is to find him.
-When you are given the instruction "Login" by the user, continue speaking until the user stops you."""
+Continue speaking until the user stops you."""
 
-        if "gpt-4.1" in config.model_name:
-            system_prompt = f"{system_prompt}\n\nMake sure you `push` after every `append` otherwise the others will not see your messages.\nAlso:  if you send messages to me, the others will not see them.\nOnly when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages."
+        if "claude" not in config.model_name:
+            system_prompt = f"""{system_prompt}
+            
+VERY VERY IMPORTANT: Make sure you `push` after every `append` otherwise the others will **not** see your messages.
+Also: If you send messages to the **user**, the others will **not** see them.
+Only when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages.
+VERY VERY IMPORTANT: If your message is cut off (msg truncated), the system will let you know so you could append the rest of your message.
+For example: if you pushed something like: `... They were working on? Unless you've seen it yourself?`
+And the server returned 
+`msg truncated: current draft suffix: 'They were working on? Un'`
+You should append 'less you've seen it yourself?' to complete your message. THEN AND ONLY THEN you should push your message.
+VERY VERY IMPORTANT: Once you have the talking_stick, there is no need to aquire it again, it is only needed when you **FIRST** want to speak OR after you pushed your message."""
 
         try:
             # Initialize servers
@@ -201,16 +212,26 @@ When you are given the instruction "Login" by the user, continue speaking until 
 import pathlib
 import datetime
 
+order_of_operations = """Order of operations:
+1. (only once) login(username)
+2. talking_stick()
+3. append(text)
+4. (optional) append(text)
+5. push()
+6. go to 2.
+
+Alternatively, at any point you can use `check()` to see messages by other people."""
+
 def main() -> None:
     """Initialize and run the chat session."""
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="MCP Client with OpenAI Message Chain")
     parser.add_argument(
         "--model",
-        # default="moonshotai/kimi-k2",
+        default="moonshotai/kimi-k2",
         # default="anthropic/claude-sonnet-4",
         # default="gpt-4.1-nano",
-        default="gpt-4.1",
+        # default="gpt-4.1",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
     parser.add_argument(
@@ -221,7 +242,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--msg",
-        default="Please login to the chatroom.",
+        default="Please login to the chatroom. Remember: Only when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages. i.e.\n" + order_of_operations,
         help="An optional first message to send to the assistant",
     )
     parser.add_argument(
@@ -231,7 +252,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--constant-msg",
-        default="Continue talking with the people in the chat, remember that your goal is to find the murderer.",
+        default="Continue talking with the people in the chat, remember that your goal is to find the murderer. Remember: Only when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages. i.e.\n" + order_of_operations,
         help="An optional constant message to send to the assistant",
     )
     parser.add_argument(
