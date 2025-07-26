@@ -23,9 +23,114 @@ import argparse
 LOG_FILE = "/Users/ohadr/llm_async_talk/logs/chat_session_20250725_210930.log"
 PORT = 8080
 
-def parse_message_content(raw_content):
+def detect_message_format(message):
+    """Detect if message is V1 or V2 format"""
+    if isinstance(message, dict):
+        if message.get("format") == "v2":
+            return "v2"
+        elif "content" in message and isinstance(message["content"], str) and " | " in message["content"]:
+            return "v1"
+        elif "role" in message and "session_id" in message:
+            return "v2"  # V2 without explicit format field
+    return "v1"  # Default to V1 for backward compatibility
+
+
+def parse_message_content_v2(message):
+    """Parse V2 format message and categorize content"""
+    if not isinstance(message, dict):
+        return None
+    
+    role = message.get("role")
+    session_id = message.get("session_id")
+    content = message.get("content", "")
+    
+    if not session_id:
+        return None
+    
+    # Handle different roles
+    if role == "user":
+        return {
+            "type": "chat",
+            "content": content,
+            "user": session_id,
+        }
+    
+    elif role == "assistant":
+        tool_calls = message.get("tool_calls", [])
+        
+        if tool_calls:
+            # Extract first tool call info for compatibility
+            first_call = tool_calls[0]
+            function_name = first_call.get("function", {}).get("name", "unknown")
+            arguments = first_call.get("function", {}).get("arguments", "{}")
+            
+            result = {
+                "type": "tool_call",
+                "function": function_name,
+                "user": session_id,
+            }
+            
+            # Special handling for append function
+            if function_name == "append":
+                try:
+                    args_data = json.loads(arguments)
+                    result["arguments"] = args_data.get("text", "")
+                except json.JSONDecodeError:
+                    pass
+            
+            return result
+        else:
+            # Regular assistant response
+            return {
+                "type": "chat",
+                "content": content,
+                "user": session_id,
+            }
+    
+    elif role == "tool":
+        # Tool response - check for server messages
+        tool_content = content
+        # .replace("[system]", "[Server]")
+        
+        # Check for server messages within tool responses
+        import re
+        from_match = re.search(r"\[(.*?)\]: (.*)", tool_content, re.DOTALL)
+        if from_match:
+            from_user = from_match.group(1).strip()
+            actual_content = from_match.group(2).strip()
+            return {
+                "type": "chat",
+                "content": actual_content,
+                "user": session_id,
+                "from": from_user
+            }
+        else:
+            return {
+                "type": "tool_response",
+                "content": tool_content,
+                "user": session_id,
+            }
+    
+    elif role == "system":
+        # System messages - usually not displayed in chat
+        return None
+    
+    elif role == "tool_spec":
+        # Tool specifications - not displayed in chat
+        return None
+    
+    else:
+        # Unknown role, treat as chat
+        return {
+            "type": "chat",
+            "content": content,
+            "user": session_id,
+        }
+
+
+def parse_message_content_v1(raw_content):
+    """Parse and categorize V1 format message content"""
     raw_content = raw_content.replace("[system] ", "[Server]: ")
-    """Parse and categorize message content"""
     import re
 
     if not raw_content:
@@ -92,6 +197,18 @@ def parse_message_content(raw_content):
         result["from"] = from_user
     return result
 
+
+def parse_message_content(message):
+    """Parse message content - handles both V1 and V2 formats"""
+    format_version = detect_message_format(message)
+    
+    if format_version == "v2":
+        return parse_message_content_v2(message)
+    else:
+        # V1 format - extract content string
+        raw_content = message.get('content', '') if isinstance(message, dict) else str(message)
+        return parse_message_content_v1(raw_content)
+
 class ChatLogServer:
     def __init__(self, message_iterator, port=PORT, slowdown=1.1):
         self.message_iterator = message_iterator
@@ -113,9 +230,7 @@ class ChatLogServer:
         previous_message = None
 
         async for message in self.message_iterator:
-            raw_content = message.get('content', '')
-
-            parsed_content = parse_message_content(raw_content)
+            parsed_content = parse_message_content(message)
             if not parsed_content or (
                 parsed_content["type"] == "tool_response"
                 and not parsed_content["content"]
