@@ -2,7 +2,9 @@ from mcp.server.fastmcp import FastMCP
 from mcp_chatroom_client import AsyncChatRoom
 import traceback
 import atexit
+import logging
 
+logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
 
 # Create an MCP server
 mcp = FastMCP("Chatroom")

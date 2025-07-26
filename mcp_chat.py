@@ -6,6 +6,11 @@ from pathlib import Path
 
 import sys
 from dataclasses import dataclass
+
+import logging
+
+logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
+
 from chains.msg_chains.oai_msg_chain_async import (
     OpenAIAsyncMessageChain as OpenAIMessageChain,
 )
@@ -25,6 +30,7 @@ from contextlib import redirect_stdout, contextmanager
 from typing import Callable, Any
 import functools
 import contextvars
+
 
 # Import WebSocket server functionality from chat_log_sender
 from chat_log_sender import ChatLogServer
@@ -87,9 +93,9 @@ async def handle_interactive_session(
     initial_message = config.initial_message
     constant_msg = config.constant_msg
     if initial_message:
-        print(f"You: {initial_message}")
+        # print(f"You: {initial_message}")
         chain = await chain.user(initial_message).generate_bot()
-        print(f"Assistant: {chain.last_response}")
+        # print(f"Assistant: {chain.last_response}")
 
     print("Chat session started. Type 'quit' or 'exit' to end.")
 
@@ -108,7 +114,7 @@ async def handle_interactive_session(
 
             # Use the new async-aware method
             chain = await chain.user(user_input).generate_bot()
-            print(f"Assistant: {chain.last_response}")
+            # print(f"Assistant: {chain.last_response}")
 
         except KeyboardInterrupt:
             print("\nExiting...")
@@ -152,7 +158,7 @@ Just use the login tool.
 One of the people in the chat room is a murderer. Your goal is to find him.
 When you are given the instruction "Login" by the user, continue speaking until the user stops you."""
 
-        if "nano" in config.model_name:
+        if "gpt-4.1" in config.model_name:
             system_prompt = f"{system_prompt}\n\nMake sure you `push` after every `append` otherwise the others will not see your messages.\nAlso:  if you send messages to me, the others will not see them.\nOnly when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages."
 
         try:
@@ -203,7 +209,8 @@ def main() -> None:
         "--model",
         # default="moonshotai/kimi-k2",
         # default="anthropic/claude-sonnet-4",
-        default="gpt-4.1-nano",
+        # default="gpt-4.1-nano",
+        default="gpt-4.1",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
     parser.add_argument(
