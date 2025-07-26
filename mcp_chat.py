@@ -161,6 +161,7 @@ def create_run_chat_session(username, interest):
                     model_name=config.model_name,
                     base_url=config.base_url,
                     verbose=False,
+                    session_id=username,
                     # verbose=True,
                     stream_queue=msg_queue
                 )
@@ -201,8 +202,8 @@ def main() -> None:
     parser.add_argument(
         "--model",
         # default="moonshotai/kimi-k2",
-        # default="anthropic/claude-sonnet-4",
-        default="gpt-4.1-nano",
+        default="anthropic/claude-sonnet-4",
+        # default="gpt-4.1-nano",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
     parser.add_argument(
@@ -274,8 +275,6 @@ def main() -> None:
         }
         f.write(json.dumps(session_start) + '\n')
     
-    # Set the log file for PrefixedOutput
-    set_log_file(log_file)
 
     chat_config = ChatSessionConfig(
         enable_mcp=args.enable_mcp,
@@ -307,18 +306,19 @@ def main() -> None:
             timestamp = datetime.datetime.now().isoformat()
             message = await msg_queue.get()
             message["timestamp"] = timestamp
+            
             print(f"Message: {message}")
             with open(log_file, 'a', encoding='utf-8') as f:
                 
                 f.write(json.dumps(message) + '\n')
                 f.flush()
+            message["format"] = "v2"
             live_message_queue.put_nowait(message)
     
     assert len(chat_sessions) > 1
 
     async def run_all_sessions():
-        chat_tasks = [run_with_prefix(session_func, username, get_user_color(username), chat_config) 
-                        for session_func, username in chat_sessions]
+        chat_tasks = [session_func(chat_config) for session_func, username in chat_sessions]
         # Start WebSocket server alongside all chat sessions
         await asyncio.gather(
             start_websocket_server(),
