@@ -225,6 +225,7 @@ class ChatSessionConfig:
     base_url: str = "https://openrouter.ai/api/v1"
     initial_message: str | None = None
     constant_msg: str | None = None
+    mock_mode: bool = False
 
 async def cleanup_servers(servers: list[Server]) -> None:
     """Clean up all servers properly."""
@@ -247,9 +248,12 @@ async def initialize_servers(servers: list[Server]) -> bool:
 
 
 async def handle_interactive_session(
-    chain: OpenAIMessageChain, initial_message: str | None = None, constant_msg: str | None = None
+    chain: OpenAIMessageChain,  config: ChatSessionConfig
+    # initial_message: str | None = None, constant_msg: str | None = None
 ) -> OpenAIMessageChain:
     # Send initial message if provided
+    initial_message = config.initial_message
+    constant_msg = config.constant_msg
     if initial_message:
         print(f"You: {initial_message}")
         chain = await chain.user(initial_message).generate_bot()
@@ -336,7 +340,14 @@ When you are given the instruction "Login" by the user, continue speaking until 
             )
 
             # Handle interactive session with optional initial message
-            chain = await handle_interactive_session(chain, config.initial_message, config.constant_msg)
+            if not config.mock_mode:
+                chain = await handle_interactive_session(chain, config)
+            else:
+                print("Mock mode, skipping interactive session")
+                # Add random delay to prevent all sessions from hitting the server simultaneously
+                import random
+                delay = random.uniform(1, 5)  # Random delay between 1-5 seconds
+                await asyncio.sleep(delay)
 
         finally:
             await cleanup_servers(servers)
@@ -389,6 +400,11 @@ def main() -> None:
         default=8080,
         help="WebSocket server port for live chat viewing (default: 8080)",
     )
+    parser.add_argument(
+        "--mock-mode",
+        action="store_true",
+        help="Mock mode, skip interactive session",
+    )
 
     args = parser.parse_args()
     args.enable_mcp = not args.disable_mcp
@@ -430,6 +446,7 @@ def main() -> None:
         base_url=args.base_url,
         initial_message=args.msg,
         constant_msg=args.constant_msg,
+        mock_mode=args.mock_mode,
     )
     user_configs = [json.load(open(f"{args.exp_dir}/{user}")) for user in os.listdir(args.exp_dir)]
     chat_sessions = [(create_run_chat_session(user["username"], user["interest"]), user["username"]) for user in user_configs]

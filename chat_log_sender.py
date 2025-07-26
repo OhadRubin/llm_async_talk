@@ -112,7 +112,7 @@ class ChatLogServer:
 
         previous_message = None
 
-        for message in self.message_iterator:
+        async for message in self.message_iterator:
             raw_content = message.get('content', '')
 
             parsed_content = parse_message_content(raw_content)
@@ -282,14 +282,14 @@ def parse_args():
     return parser.parse_args()
 
 def create_message_iterator(log_file_path):
-    """Create an infinite iterator from the log file"""
+    """Create an infinite async iterator from the log file"""
     log_file_path = Path(log_file_path)
     
-    def message_generator():
+    async def message_generator():
         while True:
             if not log_file_path.exists():
                 print(f"Warning: Log file {log_file_path} not found, waiting...")
-                time.sleep(1)
+                await asyncio.sleep(1)
                 continue
                 
             try:
@@ -306,10 +306,10 @@ def create_message_iterator(log_file_path):
                             continue
                 # When we reach EOF, restart from beginning
                 print("Reached end of log file, restarting from beginning...")
-                time.sleep(3)  # Brief pause before restarting
+                await asyncio.sleep(3)  # Brief pause before restarting
             except Exception as e:
                 print(f"Error reading log file: {e}")
-                time.sleep(1)
+                await asyncio.sleep(1)
     
     return message_generator()
 
