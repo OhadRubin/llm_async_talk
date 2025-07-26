@@ -343,11 +343,12 @@ When you are given the instruction "Login" by the user, continue speaking until 
             if not config.mock_mode:
                 chain = await handle_interactive_session(chain, config)
             else:
-                print("Mock mode, skipping interactive session")
                 # Add random delay to prevent all sessions from hitting the server simultaneously
                 import random
-                delay = random.uniform(1, 5)  # Random delay between 1-5 seconds
-                await asyncio.sleep(delay)
+                while True:
+                    print("Mock mode, skipping interactive session")
+                    delay = random.uniform(1, 5)  # Random delay between 0.1-0.5 seconds
+                    await asyncio.sleep(delay)
 
         finally:
             await cleanup_servers(servers)

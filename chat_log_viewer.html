@@ -650,9 +650,7 @@
         function startReconnection() {
             reconnectAttempts++;
             
-            const baseDelay = 1000; // 1 second
-            const maxDelay = 30000; // 30 seconds max
-            const delay = Math.min(baseDelay * Math.pow(2, Math.min(reconnectAttempts - 1, 5)), maxDelay);
+            const delay = 200; // Fixed 200ms delay for local server
             
             statusEl.textContent = `Reconnecting... (attempt ${reconnectAttempts})`;
             connectBtn.textContent = 'Disconnect';
