@@ -23,6 +23,65 @@ import argparse
 LOG_FILE = "/Users/ohadr/llm_async_talk/logs/chat_session_20250725_210930.log"
 PORT = 8080
 
+def parse_multi_message_content(content, base_user="unknown"):
+    """
+    Parse content that may contain multiple bracketed messages.
+    
+    Args:
+        content: The raw content string to parse
+        base_user: The default user if no bracketed user found
+        
+    Returns:
+        List of parsed message dictionaries
+    """
+    
+    content = content.strip().replace("Logged in successfully as","[Server]: Logged in successfully as").replace("[system] ", "[Server]: ")
+    if not content or not content.strip():
+        return []
+    
+    import re
+    messages = []
+    
+    # Use regex to capture all bracketed messages with their content
+    pattern = r'\[([^\]]+)\]:\s*(.*?)(?=\[[^\]]+\]:|$)'
+    matches = re.findall(pattern, content, re.DOTALL)
+    
+    for username, message_content in matches:
+        username = username.strip()
+        message_content = message_content.strip()
+        
+        if not message_content:
+            continue
+            
+        # Determine message type based on bracketed user
+        if username.lower() in ["system", "server"]:
+            message = {
+                "type": "chat",
+                "user": base_user,
+                "from": "Server",
+                "content": message_content
+            }
+        else:
+            message = {
+                "type": "chat", 
+                "from": username,
+                "content": message_content,
+                "user": base_user,
+            }
+        
+        messages.append(message)
+    
+    # If no bracketed messages found, treat entire content as single message
+    if not messages and content.strip():
+        messages.append({
+            "type": "chat",
+            "user": base_user,
+            "content": content.strip()
+        })
+    
+    return messages
+
+
 def detect_message_format(message):
     """Detect if message is V1 or V2 format"""
     if isinstance(message, dict):
@@ -36,33 +95,44 @@ def detect_message_format(message):
 
 
 def parse_message_content_v2(message):
-    """Parse V2 format message and categorize content"""
+    """Parse V2 format message and categorize content - returns list of messages"""
     if not isinstance(message, dict):
-        return None
+        return []
     
     role = message.get("role")
     session_id = message.get("session_id")
     content = message.get("content", "")
     
     if not session_id:
-        return None
+        return []
+    
+    results = []
     
     # Handle different roles
     if role == "user":
-        return {
-            "type": "chat",
-            "content": content,
-            "user": session_id,
-        }
+        pass
+        # results.append({
+        #     "type": "chat",
+        #     "content": f"You: {content}",  # Add "You: " prefix for V1 compatibility
+        #     "user": session_id,
+        # })
     
     elif role == "assistant":
         tool_calls = message.get("tool_calls", [])
         
-        if tool_calls:
-            # Extract first tool call info for compatibility
-            first_call = tool_calls[0]
-            function_name = first_call.get("function", {}).get("name", "unknown")
-            arguments = first_call.get("function", {}).get("arguments", "{}")
+        # If there's content, add it as a message first
+        if content.strip():
+
+            results.append({
+                "type": "thinking",
+                "content": content,
+                "user": session_id,
+            })
+            
+        # Add tool calls as separate messages
+        for tool_call in tool_calls:
+            function_name = tool_call.get("function", {}).get("name", "unknown")
+            arguments = tool_call.get("function", {}).get("arguments", "{}")
             
             result = {
                 "type": "tool_call",
@@ -78,82 +148,71 @@ def parse_message_content_v2(message):
                 except json.JSONDecodeError:
                     pass
             
-            return result
-        else:
-            # Regular assistant response
-            return {
-                "type": "chat",
-                "content": content,
-                "user": session_id,
-            }
+            results.append(result)
+
+
     
     elif role == "tool":
-        # Tool response - check for server messages
-        tool_content = content
-        # .replace("[system]", "[Server]")
+        # Tool response - use multi-message parser for complex patterns
+        parsed_messages = parse_multi_message_content(content, session_id)
         
-        # Check for server messages within tool responses
-        import re
-        from_match = re.search(r"\[(.*?)\]: (.*)", tool_content, re.DOTALL)
-        if from_match:
-            from_user = from_match.group(1).strip()
-            actual_content = from_match.group(2).strip()
-            return {
-                "type": "chat",
-                "content": actual_content,
-                "user": session_id,
-                "from": from_user
-            }
+        if parsed_messages:
+            # Found bracketed messages, add them all
+            results.extend(parsed_messages)
         else:
-            return {
-                "type": "tool_response",
-                "content": tool_content,
-                "user": session_id,
-            }
+            # No bracketed messages, treat as regular tool response
+            if content.strip():
+                results.append({
+                    "type": "tool_response",
+                    "content": content.strip().replace("Logged in successfully as","[Server] Logged in successfully as").replace("[system]", "[Server]"),
+                    "user": session_id,
+                })
     
     elif role == "system":
         # System messages - usually not displayed in chat
-        return None
+        pass  # Don't add anything to results
     
     elif role == "tool_spec":
         # Tool specifications - not displayed in chat
-        return None
+        pass  # Don't add anything to results
     
     else:
         # Unknown role, treat as chat
-        return {
+        results.append({
             "type": "chat",
             "content": content,
             "user": session_id,
-        }
+        })
+    
+    return results
 
 
 def parse_message_content_v1(raw_content):
-    """Parse and categorize V1 format message content"""
+    """Parse and categorize V1 format message content - returns list of messages"""
     raw_content = raw_content.replace("[system] ", "[Server]: ")
     import re
 
     if not raw_content:
-        return None
+        return []
     try:
         username, content = raw_content.strip().split(" | ", 1)
     except ValueError:
-        return None
+        return []
 
     # Check for bot thinking
     thinking_match = re.search(r'<bot_thinking>(.*?)</bot_thinking>', content, re.DOTALL)
     if thinking_match:
-        return {
+        return [{
             "type": "thinking",
             "content": thinking_match.group(1).strip(),
             "user": username,
-        }
+        }]
 
     # Check for tool calls
     tool_call_match = re.search(r'<tool_call>(.*?)</tool_call>', content, re.DOTALL)
     if tool_call_match:
-        tool_data = json.loads(tool_call_match.group(1))
         try:
+            tool_data = json.loads(tool_call_match.group(1))
             ftype = tool_data.get("function", {}).get("name", "unknown")
             res = {
                 "type": "tool_call",
@@ -165,9 +224,9 @@ def parse_message_content_v1(raw_content):
                 res["arguments"] = json.loads(
                     tool_data.get("function", {}).get("arguments", "")
                 )["text"]
-            return res
+            return [res]
         except json.JSONDecodeError:
-            return None
+            return []
 
     # Check for tool responses
     tool_response_match = re.search(r'<tool_response>(.*?)</tool_response>', content, re.DOTALL)
@@ -187,7 +246,7 @@ def parse_message_content_v1(raw_content):
     else:
         from_user = None
     if not content:
-        return None
+        return []
     result = {
         "type": "chat",
         "content": content,
@@ -195,7 +254,7 @@ def parse_message_content_v1(raw_content):
     }
     if from_user:
         result["from"] = from_user
-    return result
+    return [result]
 
 
 def parse_message_content(message):
@@ -230,27 +289,34 @@ class ChatLogServer:
         previous_message = None
 
         async for message in self.message_iterator:
-            parsed_content = parse_message_content(message)
-            if not parsed_content or (
-                parsed_content["type"] == "tool_response"
-                and not parsed_content["content"]
-                and not parsed_content.get("arguments", None)
-            ):
+            parsed_contents = parse_message_content(message)
+            
+            # Handle empty results
+            if not parsed_contents:
                 previous_message = message
                 continue
+            
+            # Process each parsed message separately
+            for parsed_content in parsed_contents:
+                if not parsed_content or (
+                    parsed_content["type"] == "tool_response"
+                    and not parsed_content["content"]
+                    and not parsed_content.get("arguments", None)
+                ):
+                    continue
 
-            # Add streaming metadata
-            broadcast_data = {
-                "type": "chat_message",
-                "timestamp": message.get("timestamp"),
-                "parsed_content": parsed_content,
-                "stream_time": time.time(),
-            }
-            if parsed_content.get("from"):
-                broadcast_data["from"] = parsed_content["from"]
+                # Add streaming metadata
+                broadcast_data = {
+                    "type": "chat_message",
+                    "timestamp": message.get("timestamp"),
+                    "parsed_content": parsed_content,
+                    "stream_time": time.time(),
+                }
+                if parsed_content.get("from"):
+                    broadcast_data["from"] = parsed_content["from"]
 
-            await self.broadcast_message(broadcast_data)
-            print(broadcast_data)
+                await self.broadcast_message(broadcast_data)
+                print(broadcast_data)
 
             # Calculate delay until next message based on previous timestamp
             if previous_message:

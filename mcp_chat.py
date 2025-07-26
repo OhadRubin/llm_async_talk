@@ -27,7 +27,7 @@ import functools
 import contextvars
 
 # Import WebSocket server functionality from chat_log_sender
-from chat_log_sender import ChatLogServer, parse_message_content
+from chat_log_sender import ChatLogServer
 
 # Global message queue for live WebSocket broadcasting
 live_message_queue = asyncio.Queue()
