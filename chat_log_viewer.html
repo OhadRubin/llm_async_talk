@@ -24,16 +24,17 @@
         }
         
         
+        
         .status {
             text-align: center;
-            padding: 12px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 15px;
+            padding: 4px 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
             background: white;
             color: #2c3e50;
-            font-weight: bold;
-            font-size: 14px;
-            margin-right: 20px;
+            font-weight: normal;
+            font-size: 11px;
+            margin-right: 8px;
         }
         
         .connected {
@@ -76,118 +77,55 @@
         .user-column-header {
             text-align: center;
             font-weight: bold;
-            padding: 15px 20px;
-            margin-bottom: 15px;
-            border-radius: 15px;
-            border: 3px solid;
-            font-size: 18px;
+            padding: 4px 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            border: 1px solid;
+            font-size: 10px;
             background: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        
-        .user-column-header:empty {
-            display: none;
-        }
-        
-        .user-column-header:empty + .user-column-messages {
-            margin-top: 0;
-            flex: 1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         
         .user-column-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 15px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             background: white;
-            backdrop-filter: blur(10px);
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
             min-height: 0;
             max-height: 100%;
         }
         
+        .user-column-messages.column-0 { border-color: #27ae60; }
+        .user-column-messages.column-1 { border-color: #3498db; }
+        .user-column-messages.column-2 { border-color: #f39c12; }
+        .user-column-messages.column-3 { border-color: #9b59b6; }
+        .user-column-messages.column-4 { border-color: #2ecc71; }
+        .user-column-messages.column-5 { border-color: #e67e22; }
+        
         .message-entry {
-            margin-bottom: 15px;
-            padding: 15px 20px;
-            border-left: 5px solid;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-left: 4px solid #e0e0e0;
             font-size: 14px;
             animation: fadeIn 0.3s ease-in;
             word-wrap: break-word;
-            border-radius: 15px;
-            line-height: 1.5;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            line-height: 1.4;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             background: white;
             flex-shrink: 0;
         }
         
-        .user-system {
-            border-color: #95a5a6;
-            color: #2c3e50;
-            background: white;
-        }
         
-        .user-0 {
-            border-color: #e74c3c;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-1 {
-            border-color: #3498db;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-2 {
-            border-color: #f39c12;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-3 {
-            border-color: #9b59b6;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-4 {
-            border-color: #2ecc71;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-5 {
-            border-color: #e67e22;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .user-default {
-            border-color: #34495e;
-            color: #2c3e50;
-            background: white;
-        }
-        
-        .column-header-0 { border-color: #e74c3c; color: #e74c3c; }
+        .column-header-0 { border-color: #27ae60; color: #27ae60; }
         .column-header-1 { border-color: #3498db; color: #3498db; }
         .column-header-2 { border-color: #f39c12; color: #f39c12; }
         .column-header-3 { border-color: #9b59b6; color: #9b59b6; }
         .column-header-4 { border-color: #2ecc71; color: #2ecc71; }
         .column-header-5 { border-color: #e67e22; color: #e67e22; }
         
-        .message-header {
-            font-weight: bold;
-            margin-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .timestamp {
-            font-size: 12px;
-            opacity: 0.7;
-        }
         
         .message-content {
             line-height: 1.5;
@@ -196,13 +134,13 @@
         .parsed-thinking {
             font-style: italic;
             background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 12px 0;
-            border-left: 6px solid #f39c12;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 6px 0;
+            border-left: 4px solid #9c27b0;
             position: relative;
             font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             color: #2c3e50;
         }
         
@@ -210,56 +148,53 @@
             content: "💭 ";
             font-style: normal;
             font-weight: bold;
-            color: #f39c12;
+            color: #9c27b0;
         }
         
         .parsed-tool-call {
             font-family: 'Segoe UI', 'Arial', sans-serif;
             background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 12px 0;
-            border-left: 6px solid #2196f3;
-            font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 3px 0;
+            border-left: 3px solid #9c27b0;
+            font-size: 12px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             color: #2c3e50;
+            line-height: 1.2;
         }
         
-        .parsed-tool-call::before {
-            content: "🔧 ";
-            font-style: normal;
-            font-weight: bold;
-            color: #2196f3;
-        }
         
         .tool-function {
             font-weight: bold;
-            color: #1976d2;
-            margin-bottom: 8px;
-            font-size: 15px;
+            color: #9c27b0;
+            margin-bottom: 2px;
+            font-size: 12px;
+            line-height: 1.1;
         }
         
         .tool-args {
             background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            font-size: 13px;
-            max-height: 120px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin-top: 2px;
+            font-size: 11px;
+            max-height: 80px;
             overflow-y: auto;
             border: 1px solid #e0e0e0;
             color: #37474f;
+            line-height: 1.2;
         }
         
         .parsed-tool-response {
             font-family: 'Segoe UI', 'Arial', sans-serif;
             background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 12px 0;
-            border-left: 6px solid #4caf50;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 6px 0;
+            border-left: 4px solid #4caf50;
             font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             color: #2c3e50;
         }
         
@@ -272,13 +207,13 @@
         
         .parsed-system {
             background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin: 12px 0;
-            border-left: 6px solid #9c27b0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 6px 0;
+            border-left: 4px solid #9c27b0;
             font-style: italic;
             font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             color: #2c3e50;
         }
         
@@ -291,24 +226,27 @@
         
         .parsed-chat {
             background: white;
-            padding: 16px;
-            border-radius: 12px;
-            margin: 10px 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 6px 0;
             font-size: 14px;
             color: #2c3e50;
             border: 1px solid #f0f0f0;
         }
+        
+        /* Dynamic sender colors will be applied via JavaScript */
         
         .parsed-empty {
             color: #7f8c8d;
             font-style: italic;
             opacity: 0.8;
             background: white;
-            padding: 12px;
-            border-radius: 10px;
+            padding: 6px 8px;
+            border-radius: 6px;
             text-align: center;
             border: 1px solid #f0f0f0;
         }
+        
         
         @keyframes fadeIn {
             from {
@@ -322,39 +260,68 @@
         }
         
         .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 15px;
+            gap: 8px;
+            padding: 8px 12px;
             background: white;
             border: 1px solid #e0e0e0;
-            border-radius: 15px;
-            margin: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .controls.minimized {
+            padding: 4px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            justify-content: center;
+        }
+        
+        .controls.minimized .control-content {
+            display: none;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 3px;
+            color: #2c3e50;
+        }
+        
+        .toggle-btn:hover {
+            background: #f0f0f0;
         }
         
         .control-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         
         button {
             background: white;
             color: #2c3e50;
             border: 1px solid #2c3e50;
-            padding: 12px 25px;
-            font-size: 16px;
+            padding: 4px 8px;
+            font-size: 11px;
             cursor: pointer;
-            border-radius: 25px;
+            border-radius: 4px;
             font-family: 'Segoe UI', 'Arial', sans-serif;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            font-weight: normal;
+            transition: all 0.2s ease;
         }
         
         button:hover {
             background: #f5f5f5;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
         
         button:disabled {
@@ -362,55 +329,94 @@
             color: #a0a0a0;
             border-color: #e0e0e0;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
         
-        .stats {
-            text-align: center;
-            font-size: 14px;
+        
+        .last-system-messages {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
-            padding: 15px;
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 15px;
             margin: 10px;
         }
         
-        .stat-item {
+        .last-system-message {
             background: white;
-            padding: 12px;
-            border-radius: 15px;
             border: 1px solid #e0e0e0;
-            color: #2c3e50;
-            font-weight: bold;
+            border-radius: 15px;
+            padding: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .last-system-message.updated,
+        .message-entry.updated {
+            border: 2px solid #ff0000;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+            animation: systemUpdatePulse 2s ease-out;
+        }
+        
+        @keyframes systemUpdatePulse {
+            0% {
+                border-color: #ff0000;
+                box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            }
+            50% {
+                border-color: #ff3333;
+                box-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
+            }
+            100% {
+                border-color: #ff0000;
+                box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+            }
+        }
+        
+        .last-system-header {
+            font-weight: bold;
+            font-size: 14px;
+            color: #9c27b0;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 3px;
+        }
+        
+        .last-system-content {
+            font-size: 13px;
+            color: #2c3e50;
+            line-height: 1.3;
+            max-height: 60px;
+            overflow-y: auto;
+            padding: 6px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        
         <div class="chat-container" id="chatContainer">
             <!-- User columns will be created dynamically -->
         </div>
         
-        <div class="controls">
-            <div id="status" class="status disconnected">
-                Disconnected
-            </div>
-            <div class="control-buttons">
-                <button id="connectBtn" onclick="toggleConnection()">Connect</button>
-                <button onclick="clearChat()">Clear</button>
-                <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+        <div class="last-system-messages" id="lastSystemMessages">
+            <!-- Last system message sections for each user -->
+        </div>
+        
+        <div class="controls minimized" id="controls">
+            <button class="toggle-btn" onclick="toggleControls()" title="Toggle controls">⚙️</button>
+            <div class="control-content" id="controlContent">
+                <div id="status" class="status disconnected">
+                    Disconnected
+                </div>
+                <div class="control-buttons">
+                    <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+                    <button onclick="clearChat()">Clear</button>
+                    <button onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+                </div>
             </div>
         </div>
-        <div class="stats" id="stats">
-            <div class="stat-item">Total received: <span id="totalCount">0</span></div>
-            <div class="stat-item">Current message: <span id="currentIndex">0</span>/<span id="totalMessages">0</span></div>
-            <div class="stat-item">Rate: <span id="messageRate">0</span>/sec</div>
-        </div>
+        
     </div>
 
     <script>
@@ -421,21 +427,33 @@
         let ws = null;
         let isConnected = false;
         let totalReceived = 0;
-            let lastCount=0;
-            let autoScroll=true;
+        let autoScroll = true;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = Infinity; // Try forever
+        let reconnectInterval = null;
         
         // User management
         let userList = [];
-            let userToColumnMap={};
+        let userToColumnMap = {};
+        let userColorMap = {}; // Map username to color
         let columnElements = {};
-
+        
+        // Available colors for user assignment
+        const USER_COLORS = [
+            '#27ae60', // Green
+            '#3498db', // Blue  
+            '#f39c12', // Orange
+            '#9b59b6', // Purple
+            '#2ecc71', // Light green
+            '#e67e22'  // Dark orange
+        ];
+        
         const statusEl = document.getElementById('status');
         const chatContainerEl = document.getElementById('chatContainer');
         const connectBtn = document.getElementById('connectBtn');
-            const totalCountEl=document.getElementById('totalCount');
-            const currentIndexEl=document.getElementById('currentIndex');
-            const totalMessagesEl=document.getElementById('totalMessages');
-            const messageRateEl=document.getElementById('messageRate');
+        const lastSystemMessagesEl = document.getElementById('lastSystemMessages');
+        
+        let controlsMinimized = true;
         
         function initializeColumns() {
             chatContainerEl.innerHTML = '';
@@ -455,7 +473,7 @@
                 thinkingHeader.id = `column-header-${i}-thinking`;
                 
                 const thinkingMessages = document.createElement('div');
-                thinkingMessages.className='user-column-messages';
+                thinkingMessages.className = `user-column-messages column-${i}`;
                 thinkingMessages.id = `column-messages-${i}-thinking`;
                 
                 thinkingColumn.appendChild(thinkingHeader);
@@ -482,7 +500,7 @@
                 functionHeader.id = `column-header-${i}-function`;
                 
                 const functionMessages = document.createElement('div');
-                functionMessages.className='user-column-messages';
+                functionMessages.className = `user-column-messages column-${i}`;
                 functionMessages.id = `column-messages-${i}-function`;
                 
                 functionColumn.appendChild(functionHeader);
@@ -493,14 +511,44 @@
                 columnElements[i].functionHeader = functionHeader;
                 columnElements[i].functionMessages = functionMessages;
             }
-
+            
+            // Create last system message sections
+            lastSystemMessagesEl.innerHTML = '';
+            for (let i = 0; i < NUM_USERS; i++) {
+                const systemSection = document.createElement('div');
+                systemSection.className = 'last-system-message';
+                systemSection.id = `last-system-${i}`;
+                
+                const systemHeader = document.createElement('div');
+                systemHeader.className = 'last-system-header';
+                systemHeader.textContent = `User ${i + 1} - Last System Message`;
+                
+                const systemContent = document.createElement('div');
+                systemContent.className = 'last-system-content';
+                systemContent.innerHTML = 'No system messages yet';
+                systemContent.id = `last-system-content-${i}`;
+                
+                systemSection.appendChild(systemHeader);
+                systemSection.appendChild(systemContent);
+                lastSystemMessagesEl.appendChild(systemSection);
+                
+                columnElements[i].systemHeader = systemHeader;
+                columnElements[i].systemContent = systemContent;
+                columnElements[i].systemSection = systemSection; // Store reference to the section
+            }
         }
         
         function assignUserToColumn(username) {
             if (username === 'system') {
                 return 'system';
             }
-
+            
+            // Assign color if user doesn't have one
+            if (userColorMap[username] === undefined) {
+                const colorIndex = Object.keys(userColorMap).length % USER_COLORS.length;
+                userColorMap[username] = USER_COLORS[colorIndex];
+            }
+            
             if (userToColumnMap[username] !== undefined) {
                 return userToColumnMap[username];
             }
@@ -510,11 +558,15 @@
                 userList.push(username);
                 userToColumnMap[username] = columnIndex;
                 
-                // Update column headers
+                // Update column headers with colored usernames
                 const thinkingHeader = columnElements[columnIndex].thinkingHeader;
                 const functionHeader = columnElements[columnIndex].functionHeader;
-                thinkingHeader.textContent=`${username}`;
-                functionHeader.textContent=``;
+                const systemHeader = columnElements[columnIndex].systemHeader;
+                const userColor = userColorMap[username] || '#2c3e50';
+                
+                thinkingHeader.innerHTML = `<span style="color: ${userColor}; font-weight: bold;">${username}</span>`;
+                functionHeader.textContent = ``;
+                systemHeader.innerHTML = `<span style="color: ${userColor}; font-weight: bold;">${username}</span> - Last System Message`;
                 
                 return columnIndex;
             }
@@ -528,11 +580,18 @@
                 ws = new WebSocket('ws://localhost:8080');
                 
                 ws.onopen = () => {
-                    isConnected=true;
+                    isConnected = true;
+                    reconnectAttempts = 0; // Reset reconnect attempts on successful connection
                     statusEl.textContent = 'Connected to Chat Log Server';
                     statusEl.className = 'status connected';
                     connectBtn.textContent = 'Disconnect';
                     console.log('Connected to WebSocket server');
+                    
+                    // Clear any existing reconnect interval
+                    if (reconnectInterval) {
+                        clearInterval(reconnectInterval);
+                        reconnectInterval = null;
+                    }
                 };
                 
                 ws.onmessage = (event) => {
@@ -541,48 +600,95 @@
                     if (data.type === 'chat_message') {
                         displayMessage(data);
                         totalReceived++;
-                        currentIndexEl.textContent=totalReceived;
-                        totalCountEl.textContent=totalReceived;
                     } else if (data.type === 'welcome') {
                         console.log(data.message);
+                        // Handle iterator-based server (no total_messages)
                         if (data.total_messages) {
-                            totalMessagesEl.textContent=data.total_messages;
+                            console.log(`Total messages: ${data.total_messages}`);
                         } else {
-                            totalMessagesEl.textContent='∞';
+                            console.log('Using live message stream (∞)');
                         }
                     }
                 };
                 
                 ws.onclose = () => {
                     isConnected = false;
-                    statusEl.textContent='Disconnected';
+                    statusEl.textContent = 'Disconnected - Reconnecting...';
                     statusEl.className = 'status disconnected';
-                    connectBtn.textContent='Connect';
+                    connectBtn.textContent = 'Disconnect';
                     console.log('Disconnected from WebSocket server');
+                    
+                    // Start automatic reconnection if not manually disconnected
+                    if (!reconnectInterval) {
+                        startReconnection();
+                    }
                 };
                 
                 ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
-                    statusEl.textContent='Connection Error';
-                    statusEl.className='status disconnected';
+                    statusEl.textContent = 'Connection Error - Reconnecting...';
+                    statusEl.className = 'status disconnected';
+                    
+                    // Start automatic reconnection if not already running
+                    if (!reconnectInterval && !isConnected) {
+                        startReconnection();
+                    }
                 };
                 
             } catch (error) {
                 console.error('Failed to connect:', error);
-                alert('Failed to connect to WebSocket server. Make sure the server is running.');
+                statusEl.textContent = 'Connection Failed - Reconnecting...';
+                statusEl.className = 'status disconnected';
+                
+                // Start automatic reconnection on connection failure
+                if (!reconnectInterval) {
+                    startReconnection();
+                }
             }
         }
         
-            function disconnect() {
+        function startReconnection() {
+            reconnectAttempts++;
+            
+            const baseDelay = 1000; // 1 second
+            const maxDelay = 30000; // 30 seconds max
+            const delay = Math.min(baseDelay * Math.pow(2, Math.min(reconnectAttempts - 1, 5)), maxDelay);
+            
+            statusEl.textContent = `Reconnecting... (attempt ${reconnectAttempts})`;
+            connectBtn.textContent = 'Disconnect';
+            console.log(`Reconnection attempt ${reconnectAttempts} in ${delay}ms`);
+            
+            reconnectInterval = setTimeout(() => {
+                reconnectInterval = null;
+                if (!isConnected) {
+                    connect();
+                }
+            }, delay);
+        }
+        
+        function disconnect() {
+            // Clear any reconnection attempts
+            if (reconnectInterval) {
+                clearTimeout(reconnectInterval);
+                reconnectInterval = null;
+            }
+            
+            reconnectAttempts = 0;
+            
             if (ws) {
                 ws.close();
                 ws = null;
             }
+            
+            isConnected = false;
+            statusEl.textContent = 'Disconnected';
+            statusEl.className = 'status disconnected';
+            connectBtn.textContent = 'Connect';
         }
         
         function toggleConnection() {
-            if (isConnected) {
-                disconnect();
+            if (isConnected || reconnectInterval) {
+                disconnect(); // This will stop reconnection attempts
             } else {
                 connect();
             }
@@ -590,30 +696,29 @@
         
         function displayMessage(message) {
             const parsed = message.parsed_content || {};
-            const username = parsed.user || 'unknown';
+            const username = parsed.user || 'Unknown';
+            const fromServer = message.from === 'Server' || parsed.from === 'Server';
+            
             const columnIndex = assignUserToColumn(username);
             
-            // Handle system messages - show in all thinking columns
-            if (columnIndex==='system') {
-                for (let i=0;i<NUM_USERS;i++) {
-                    addMessageToColumn(message, i, 'thinking', true);
-                }
+            // Skip if no valid column
+            if (columnIndex === 'system' || columnIndex >= NUM_USERS) {
                 return;
             }
             
-            // Check if message is from [Server] or [system] - route to thinking
-            if (username.includes('[Server]')||username.includes('[system]')) {
-                addMessageToColumn(message, columnIndex, 'thinking', false);
+            // Handle server messages - only update last system message, don't show in columns
+            if (fromServer) {
+                updateLastSystemMessage(columnIndex, parsed.content || '');
                 return;
             }
-
+            
             // Skip messages without parsed content
-                if (!parsed||!parsed.type) {
+            if (!parsed || !parsed.type) {
                 return;
             }
             
-                // Determine which column type based on message content
-                const columnType=(parsed.type==='thinking'||parsed.type==='tool_call')?'thinking':'function';
+            // Determine column type based on message content
+            const columnType = (parsed.type === 'thinking' || parsed.type === 'tool_call') ? 'thinking' : 'function';
             
             // Add message to the appropriate column
             addMessageToColumn(message, columnIndex, columnType, false);
@@ -623,31 +728,29 @@
             const columnMessages = columnType === 'thinking' ? 
                 columnElements[columnIndex].thinkingMessages : 
                 columnElements[columnIndex].functionMessages;
-
-            const entry = document.createElement('div');
-            const userClass=isSystem? 'user-system':`user-${columnIndex}`;
-            entry.className=`message-entry ${userClass}`;
-
-            // Format timestamp
-            const timestamp=message.timestamp?
-                new Date(message.timestamp).toLocaleTimeString():
-                new Date().toLocaleTimeString();
             
-            // Create message header (simpler for columns)
-            const header=document.createElement('div');
-            header.className='message-header';
-            header.innerHTML=`<span class="timestamp">[${timestamp}]</span>`;
+            // Get sender info for function column messages
+            const parsed = message.parsed_content || {};
+            const fromUser = (columnType === 'function') ? (message.from || parsed.from || parsed.user || 'Unknown') : null;
+            const fromUserColor = fromUser ? (userColorMap[fromUser] || '#666') : null;
+            
+            const entry = document.createElement('div');
+            entry.className = 'message-entry';
+            
+            // Apply sender color to message border if available
+            if (fromUser && userColorMap[fromUser]) {
+                entry.style.borderLeftColor = userColorMap[fromUser];
+            }
             
             // Create message content using parsed data
             const content = document.createElement('div');
             content.className = 'message-content';
             
-            const parsed=message.parsed_content||{};
             let contentHTML = '';
             
             switch (parsed.type) {
                 case 'thinking':
-                    contentHTML=`<div class="parsed-thinking">${escapeHtml(parsed.content||'')}</div>`;
+                    contentHTML=`<div class="parsed-thinking">${colorizeUsernames(escapeHtml(parsed.content||''))}</div>`;
                     break;
 
                 case 'tool_call':
@@ -663,31 +766,60 @@
                     break;
 
                 case 'tool_response':
-            contentHTML=`<div class="parsed-tool-response">${escapeHtml(parsed.content||'')}</div>`;
+                    contentHTML=`<div class="parsed-tool-response">${colorizeUsernames(escapeHtml(parsed.content||''))}</div>`;
                     break;
 
-                case 'system':
-            contentHTML=`<div class="parsed-system">${escapeHtml(parsed.content||'')}</div>`;
-            break;
 
                 case 'chat':
-            contentHTML=`<div class="parsed-chat">${escapeHtml(parsed.content||'')}</div>`;
+                    // Add sender prefix for function column messages
+                    let chatContent = parsed.content || '';
+                    
+                    if (fromUser && columnType === 'function') {
+                        chatContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${colorizeUsernames(escapeHtml(chatContent))}`;
+                    } else {
+                        chatContent = colorizeUsernames(escapeHtml(chatContent));
+                    }
+                    
+                    contentHTML=`<div class="parsed-chat">${chatContent}</div>`;
                     break;
 
                 default:
                     // Fallback to parsed content
-            contentHTML=`<div class="parsed-chat">${escapeHtml(parsed.content||'No content')}</div>`;
+                    let defaultContent = parsed.content || 'No content';
+                    if (fromUser && columnType === 'function') {
+                        defaultContent = `<span style="color: ${fromUserColor}; font-weight: bold;">${escapeHtml(fromUser)}:</span> ${colorizeUsernames(escapeHtml(defaultContent))}`;
+                    } else {
+                        defaultContent = colorizeUsernames(escapeHtml(defaultContent));
+                    }
+                    contentHTML=`<div class="parsed-chat">${defaultContent}</div>`;
                     break;
             }
             
             content.innerHTML = contentHTML;
             
-                entry.appendChild(header);
             entry.appendChild(content);
             
             // Add to bottom of column (chronological order)
             columnMessages.appendChild(entry);
-
+            
+            // Add red border animation for new messages
+            entry.classList.add('updated');
+            
+            // Remove the animation class after animation completes
+            setTimeout(() => {
+                entry.classList.remove('updated');
+            }, 1000);
+            
+            // Update notification bar with the new message
+            const username = parsed.user || 'Unknown';
+            let displayContent = parsed.content || 'No content';
+            
+            // For tool calls, show function name
+            if (parsed.type === 'tool_call' && parsed.function) {
+                displayContent = `Function: ${parsed.function}`;
+            }
+            
+            
             // Remove old entries if we have too many in this column
             while (columnMessages.children.length > MAX_ENTRIES_PER_COLUMN) {
                 columnMessages.removeChild(columnMessages.firstChild);
@@ -704,7 +836,37 @@
             div.textContent = text;
             return div.innerHTML;
         }
-
+        
+        function colorizeUsernames(text) {
+            let colorizedText = text;
+            // Color usernames that appear in the text
+            Object.keys(userColorMap).forEach(username => {
+                const color = userColorMap[username];
+                const regex = new RegExp(`\\b${username}\\b`, 'gi');
+                colorizedText = colorizedText.replace(regex, `<span style="color: ${color}; font-weight: bold;">${username}</span>`);
+            });
+            return colorizedText;
+        }
+        
+        
+        function updateLastSystemMessage(columnIndex, content) {
+            if (content && content.trim() && columnIndex >= 0 && columnIndex < NUM_USERS) {
+                const systemContent = columnElements[columnIndex].systemContent;
+                const systemSection = columnElements[columnIndex].systemSection;
+                
+                systemContent.innerHTML = colorizeUsernames(escapeHtml(content.trim()));
+                
+                // Add bright red border animation
+                systemSection.classList.add('updated');
+                
+                // Remove the animation class after animation completes
+                setTimeout(() => {
+                    systemSection.classList.remove('updated');
+                }, 1000);
+                
+            }
+        }
+        
         function clearChat() {
             for (let i = 0; i < NUM_USERS; i++) {
                 const thinkingMessages = columnElements[i].thinkingMessages;
@@ -713,15 +875,29 @@
                 functionMessages.innerHTML = '';
             }
             totalReceived = 0;
-            totalCountEl.textContent='0';
-            currentIndexEl.textContent='0';
+            
+            
+            // Reset last system messages
+            for (let i = 0; i < NUM_USERS; i++) {
+                if (columnElements[i] && columnElements[i].systemContent) {
+                    columnElements[i].systemContent.innerHTML = 'No system messages yet';
+                    // Remove any lingering animation classes
+                    if (columnElements[i].systemSection) {
+                        columnElements[i].systemSection.classList.remove('updated');
+                    }
+                }
+            }
             
             // Reset user assignments but keep columns
             userList = [];
-            userToColumnMap={};
+            userToColumnMap = {};
+            userColorMap = {};
             for (let i = 0; i < NUM_USERS; i++) {
-                columnElements[i].thinkingHeader.textContent=`User ${i+1}`;
-                columnElements[i].functionHeader.textContent=``;
+                columnElements[i].thinkingHeader.innerHTML = `User ${i + 1}`;
+                columnElements[i].functionHeader.textContent = ``;
+                if (columnElements[i].systemHeader) {
+                    columnElements[i].systemHeader.innerHTML = `User ${i + 1} - Last System Message`;
+                }
             }
         }
         
@@ -731,12 +907,17 @@
             button.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
         }
         
-            // Update stats every second
-            setInterval(() => {
-                const rate=totalReceived-lastCount;
-                lastCount=totalReceived;
-                messageRateEl.textContent=rate;
-            }, 1000);
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            controlsMinimized = !controlsMinimized;
+            
+            if (controlsMinimized) {
+                controls.classList.add('minimized');
+            } else {
+                controls.classList.remove('minimized');
+            }
+        }
+        
         
         // Initialize columns and auto-connect on page load
         window.addEventListener('load', () => {

@@ -20,7 +20,7 @@ import signal
 import sys
 import argparse
 
-LOG_FILE = "/Users/ohadr/llm_async_talk/logs/chat_session_20250723_115830.log"
+LOG_FILE = "/Users/ohadr/llm_async_talk/logs/chat_session_20250725_210930.log"
 PORT = 8080
 
 def parse_message_content(raw_content):
