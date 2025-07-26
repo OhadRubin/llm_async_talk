@@ -308,11 +308,11 @@ def main() -> None:
             message["timestamp"] = timestamp
             
             print(f"Message: {message}")
+            message["format"] = "v2"
             with open(log_file, 'a', encoding='utf-8') as f:
                 
                 f.write(json.dumps(message) + '\n')
                 f.flush()
-            message["format"] = "v2"
             live_message_queue.put_nowait(message)
     
     assert len(chat_sessions) > 1
