@@ -43,11 +43,8 @@ def create_live_message_iterator():
             except Exception as e:
                 print(f"Error in live message iterator: {e}")
                 await asyncio.sleep(0.1)
-    
+
     return message_generator()
-
-
-
 
 
 @dataclass
@@ -123,6 +120,7 @@ async def handle_interactive_session(
     return chain
 
 def create_run_chat_session(username, interest):
+
     async def run_chat_session(config: ChatSessionConfig) -> None:
         """Main chat session handler using functional paradigm.
 
@@ -146,7 +144,17 @@ def create_run_chat_session(username, interest):
                 Server(name, srv_config)
                 for name, srv_config in server_config["mcpServers"].items()
             ]
-        
+
+        system_prompt = f"""Let's login and start speaking with our friends in the chatroom, your username is {username}.
+You are interested in {interest}.
+Keep your messages concise. Send a message saying Hi.
+Just use the login tool.
+One of the people in the chat room is a murderer. Your goal is to find him.
+When you are given the instruction "Login" by the user, continue speaking until the user stops you."""
+
+        if "nano" in config.model_name:
+            system_prompt = f"{system_prompt}\n\nMake sure you `push` after every `append` otherwise the others will not see your messages.\nAlso:  if you send messages to me, the others will not see them.\nOnly when you do `talking_stick` followed by one or more `append` followed by `push` the others will see your messages."
+
         try:
             # Initialize servers
             if servers and not await initialize_servers(servers):
@@ -163,18 +171,10 @@ def create_run_chat_session(username, interest):
                     verbose=False,
                     session_id=username,
                     # verbose=True,
-                    stream_queue=msg_queue
+                    stream_queue=msg_queue,
                 )
                 .with_tools(tool_schemas, tool_mapping)
-                
-                .system(
-f"""Let's login and start speaking with our friends in the chatroom, your username is {username}.
-You are interested in {interest}.
-Keep your messages concise. Send a message saying Hi.
-Just use the login tool.
-One of the people in the chat room is a murderer. Your goal is to find him.
-When you are given the instruction "Login" by the user, continue speaking until the user stops you."""
-                )
+                .system(system_prompt)
             )
 
             # Handle interactive session with optional initial message
@@ -202,8 +202,8 @@ def main() -> None:
     parser.add_argument(
         "--model",
         # default="moonshotai/kimi-k2",
-        default="anthropic/claude-sonnet-4",
-        # default="gpt-4.1-nano",
+        # default="anthropic/claude-sonnet-4",
+        default="gpt-4.1-nano",
         help="Model name to use (default: google/gemini-flash-1.5)",
     )
     parser.add_argument(
@@ -253,12 +253,12 @@ def main() -> None:
     logs_dir = "logs"
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
-    
+
     # Create log file with timestamp
     import datetime
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(logs_dir, f"chat_session_{timestamp}.log")
-    
+
     # Create the log file with initial session info as JSONL
     with open(log_file, 'w') as f:
         import json
@@ -273,8 +273,7 @@ def main() -> None:
                 "experiment_directory": args.exp_dir
             }
         }
-        f.write(json.dumps(session_start) + '\n')
-    
+        f.write(json.dumps(session_start) + "\n")
 
     chat_config = ChatSessionConfig(
         enable_mcp=args.enable_mcp,
@@ -287,11 +286,11 @@ def main() -> None:
     )
     user_configs = [json.load(open(f"{args.exp_dir}/{user}")) for user in os.listdir(args.exp_dir)]
     chat_sessions = [(create_run_chat_session(user["username"], user["interest"]), user["username"]) for user in user_configs]
-    
+
     # Create and start WebSocket server
     message_iterator = create_live_message_iterator()
     websocket_server = ChatLogServer(message_iterator, args.websocket_port)
-    
+
     async def start_websocket_server():
         """Start the WebSocket server for live chat viewing."""
         try:
@@ -299,22 +298,22 @@ def main() -> None:
             await websocket_server.start()
         except Exception as e:
             print(f"Failed to start WebSocket server: {e}")
-    
+
     async def start_msg_queue():
         """Start the message queue for live chat viewing."""
         while True:
             timestamp = datetime.datetime.now().isoformat()
             message = await msg_queue.get()
             message["timestamp"] = timestamp
-            
-            print(f"Message: {message}")
+
+            # print(f"Message: {message}")
             message["format"] = "v2"
             with open(log_file, 'a', encoding='utf-8') as f:
-                
+
                 f.write(json.dumps(message) + '\n')
                 f.flush()
             live_message_queue.put_nowait(message)
-    
+
     assert len(chat_sessions) > 1
 
     async def run_all_sessions():

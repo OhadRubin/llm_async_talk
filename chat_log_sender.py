@@ -256,7 +256,7 @@ def parse_message_content_v1(raw_content):
         result["from"] = from_user
     return [result]
 
-
+import copy
 def parse_message_content(message):
     """Parse message content - handles both V1 and V2 formats"""
     format_version = detect_message_format(message)
@@ -287,6 +287,8 @@ class ChatLogServer:
         from datetime import datetime
 
         previous_message = None
+        
+        seen_messages = set()
 
         async for message in self.message_iterator:
             parsed_contents = parse_message_content(message)
@@ -314,9 +316,15 @@ class ChatLogServer:
                 }
                 if parsed_content.get("from"):
                     broadcast_data["from"] = parsed_content["from"]
-
+                
+                copy_parsed_content = copy.deepcopy(parsed_content)
+                # copy_parsed_content["from"]
+                if copy_parsed_content["type"] == "chat" and copy_parsed_content.get("from","Server") != "Server":
+                    msg = f'[{copy_parsed_content["from"]}]: {copy_parsed_content["content"]}'
+                    if msg not in seen_messages:
+                        seen_messages.add(msg)
+                        print(msg)
                 await self.broadcast_message(broadcast_data)
-                print(broadcast_data)
 
             # Calculate delay until next message based on previous timestamp
             if previous_message:
