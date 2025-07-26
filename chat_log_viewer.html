@@ -592,6 +592,9 @@
                         clearInterval(reconnectInterval);
                         reconnectInterval = null;
                     }
+                    
+                    // Clear chat to start fresh on connection
+                    clearChat();
                 };
                 
                 ws.onmessage = (event) => {
